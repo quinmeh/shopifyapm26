@@ -12,16 +12,16 @@ type Selections = Record<string, string>;
 type AddressForm = Omit<Address, "country">;
 const EMPTY: AddressForm = { line1: "", city: "", region: "", postalCode: "" };
 
-export function OpenScreen({ gift }: { gift: RecipientGift }) {
+export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }: { gift: RecipientGift; initialProduct?: RecipientProduct; initialAddress?: AddressForm; onConfirmed?: () => void }) {
   const router = useRouter();
   const giver = gift.giverName;
-  const [chosen, setChosen] = useState<RecipientProduct>(gift.pick);
+  const [chosen, setChosen] = useState<RecipientProduct>(initialProduct ?? gift.pick);
   const [options, setOptions] = useState<OptionGroup[] | null>(null);
   const [selections, setSelections] = useState<Selections>({});
   const [variant, setVariant] = useState<RecipientVariant | null>(null);
   const [resolving, setResolving] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [address, setAddress] = useState<AddressForm>(EMPTY);
+  const [address, setAddress] = useState<AddressForm>(initialAddress ?? EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof AddressForm | "variant", string>>>({});
   const [sheetOpen, setSheetOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -32,6 +32,7 @@ export function OpenScreen({ gift }: { gift: RecipientGift }) {
   const load = useCallback(async (productId: string, sel: Selections) => {
     const id = ++req.current;
     setResolving(true);
+    setVariant(null);
     try {
       const selected = Object.entries(sel).map(([name, label]) => ({ name, label }));
       const qs = new URLSearchParams({ for: "recipient" });
@@ -40,6 +41,7 @@ export function OpenScreen({ gift }: { gift: RecipientGift }) {
       if (id !== req.current) return;
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = (await r.json()) as { options: OptionGroup[]; variant: RecipientVariant | null };
+      if (id !== req.current) return;
       setOptions(j.options.filter((o) => (o.values ?? []).some((v) => v.exists !== false)));
       setVariant(j.variant);
       setLoadError(false);
@@ -88,17 +90,18 @@ export function OpenScreen({ gift }: { gift: RecipientGift }) {
   };
 
   const confirm = async () => {
-    if (!validate() || !variant?.id) return;
+    if (resolving || loadError || submitting || !validate() || !variantReady) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       const r = await fetch(`/api/gifts/${gift.id}/confirm`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chosenProductId: chosen.id, variantId: variant.id, variantTitle: variantLabel(selections, variant), address: { ...address, country: "US" } }),
+        body: JSON.stringify({ chosenProductId: chosen.id, variantId: variant.id, selected: variant.options, variantTitle: variantLabel(selections, variant), address: { ...address, country: "US" } }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      router.push(`/g/${gift.id}/done`);
+      if (onConfirmed) onConfirmed();
+      else router.push(`/g/${gift.id}/done`);
     } catch {
       setSubmitError("Couldn’t send that. Try again.");
       setSubmitting(false);
@@ -120,8 +123,8 @@ export function OpenScreen({ gift }: { gift: RecipientGift }) {
   return (
     <Screen theme="gift">
       <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
-        <BackButton href={`/g/${gift.id}`} />
-        <span className="text-[15px] font-[650] text-gift-text">Your gift from {giver}</span>
+        <BackButton href={onConfirmed ? `/gift/${gift.id}` : `/g/${gift.id}`} />
+        <span className="text-[15px] font-[650] text-gift-text">{onConfirmed ? "Choose an alternative" : `Your gift from ${giver}`}</span>
       </div>
 
       <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
@@ -180,8 +183,8 @@ export function OpenScreen({ gift }: { gift: RecipientGift }) {
       </main>
 
       <footer className="sticky bottom-0 border-t border-gift-border bg-gift-bg px-5 pb-4 pt-3">
-        <PrimaryButton onClick={() => void confirm()} disabled={submitting || (needsOptions && allChosen && !variantReady && !resolving)}>
-          {submitting ? "Sending…" : "Love it — send it to me"}
+        <PrimaryButton onClick={() => void confirm()} disabled={submitting || resolving || loadError || options === null || (allChosen && !variantReady)}>
+          {submitting ? "Sending…" : onConfirmed ? "Confirm this alternative" : "Love it — send it to me"}
         </PrimaryButton>
         {submitError && <p className="pt-2 text-center text-[13px] text-clay">{submitError}</p>}
         {others > 0 && (

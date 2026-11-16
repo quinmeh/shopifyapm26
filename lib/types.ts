@@ -35,6 +35,7 @@ export type Gift = {
   confirmation?: {
     chosenProductId: string;
     variantId: string;
+    selected?: { name: string; label: string }[];
     variantTitle: string;
     address: Address;
     confirmedAt: string;
