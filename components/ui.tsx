@@ -51,7 +51,9 @@ export function Spinner({ label = "Searching" }: { label?: string }) {
 // `fixed`: lock the screen to the viewport height so one inner region can own the scrolling.
 export function Screen({ children, theme = "giver", fixed }: { children: ReactNode; theme?: "giver" | "gift"; fixed?: boolean }) {
   return (
-    <div data-theme={theme} className={`flex flex-1 flex-col bg-giver-bg data-[theme=gift]:bg-gift-bg ${fixed ? "h-dvh overflow-hidden" : "min-h-dvh"}`}>
+    // Fixed mode must not be flex-1: inside an indefinite-height body, flex-basis 0% sizes to
+    // content and overrides h-dvh, so the window scrolls. flex-none + a hard height pins it.
+    <div data-theme={theme} className={`flex flex-col bg-giver-bg data-[theme=gift]:bg-gift-bg ${fixed ? "h-dvh max-h-dvh flex-none overflow-hidden" : "min-h-dvh flex-1"}`}>
       <div className="mx-auto flex w-full min-h-0 max-w-[480px] flex-1 flex-col">{children}</div>
     </div>
   );

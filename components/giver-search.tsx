@@ -310,7 +310,7 @@ export function GiverSearch() {
         </div>
 
         {/* Scroll region */}
-        <div className="-mx-5 mt-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4">
+        <div className="-mx-5 mt-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pb-4">
           {status === "empty" ? (
             <EmptyState photo={photo} budget={budget} location={location} occasion={occasion} cue={cue}
               onTryPhoto={() => fileRef.current?.click()} onWiden={() => onBudget(WIDE)}
