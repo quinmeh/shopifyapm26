@@ -140,8 +140,8 @@ Caption "About ten seconds." Auto-advances to 1c ~1s after both the read and the
 3. **AnalysisCard** (photo only): title "What the photo says"; one-sentence taste read (text2); CueChips row: "Everything in the photo" (selected by default) + 3–5 detected cues ("tuxedo cat", "stack of paperbacks"). Loading: title "Reading the photo…" + two skeleton lines + three skeleton chips. Unavailable (no key / error): one line in text2, e.g. "Photo read is off — add ANTHROPIC_API_KEY to turn it on." Matches still show.
 4. Budget | Ships to row (changes re-search immediately)
 5. Section row: "Matches their taste" + right "6 gifts · 5 makers". With a cue selected: "Gifts for the {cue}". Loading: "Finding gifts that match the photo…" / "Finding gifts for the {cue}…"
-6. 2-column grid of ProductTiles
-7. Sticky footer: PrimaryButton "Choose {short name}" (or disabled "Choose a gift") + CreditFooter
+6. 2-column grid of ProductTiles — **the only region that scrolls**. The screen is locked to the viewport; 1–5 and the footer stay fixed.
+7. Footer: PrimaryButton "Choose {short name}" (or disabled "Choose a gift") + CreditFooter
 
 Behavior: "Everything in the photo" = pure visual search (no text — text overrides the image signal). A cue chip = text search on that cue's query. Selecting a tile updates the button label. See 1a/1b for reload and empty.
 

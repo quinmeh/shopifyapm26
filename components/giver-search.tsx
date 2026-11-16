@@ -277,60 +277,64 @@ export function GiverSearch() {
   const budgetOptions = budget === WIDE ? [...BUDGETS, WIDE] : BUDGETS;
 
   return (
-    <Screen theme="giver">
-      <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
+    <Screen theme="giver" fixed>
+      <div className="flex shrink-0 items-center gap-3 px-5 pt-[18px] pb-3">
         <BackButton onClick={() => setStep("filters")} />
         <span className="text-[15px] font-[650]">Matches</span>
         <span className="ml-auto"><Chip>Prototype</Chip></span>
       </div>
 
-      <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
-        {fileInput}
-        <PhotoInputCard photo={photo} searching={loading && clearedByPhoto} onChange={() => fileRef.current?.click()} />
-        {photo && <AnalysisCard analysis={analysis} loading={analysisLoading} active={cue} onPick={onCue} />}
-        <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Budget" htmlFor="budget">
-            <select id="budget" className={inputCls} value={budget.label}
-              onChange={(e) => onBudget(budgetOptions.find((b) => b.label === e.target.value)!)}>
-              {budgetOptions.map((b) => <option key={b.label} value={b.label}>{b.label}</option>)}
-            </select>
-          </Field>
-          <Field label="Ships to" htmlFor="ships">
-            <LocationPicker value={location} onChange={onLocation} />
-          </Field>
-        </div>
-
-        {status === "empty" ? (
-          <EmptyState photo={photo} budget={budget} location={location} occasion={occasion} cue={cue}
-            onTryPhoto={() => fileRef.current?.click()} onWiden={() => onBudget(WIDE)}
-            onDescribe={() => { setPhoto(null); setAnalysis(null); setCue(null); setStep("occasion"); }}
-            onEverything={() => onCue(null)} />
-        ) : (
-          <>
+      <main className="flex min-h-0 flex-1 flex-col px-5">
+        {/* Static block: photo, cues, filters, section title. Only the grid below scrolls. */}
+        <div className="flex shrink-0 flex-col gap-2.5">
+          {fileInput}
+          <PhotoInputCard photo={photo} searching={loading && clearedByPhoto} onChange={() => fileRef.current?.click()} />
+          {photo && <AnalysisCard analysis={analysis} loading={analysisLoading} active={cue} onPick={onCue} />}
+          <div className="grid grid-cols-2 gap-2.5">
+            <Field label="Budget" htmlFor="budget">
+              <select id="budget" className={inputCls} value={budget.label}
+                onChange={(e) => onBudget(budgetOptions.find((b) => b.label === e.target.value)!)}>
+                {budgetOptions.map((b) => <option key={b.label} value={b.label}>{b.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Ships to" htmlFor="ships">
+              <LocationPicker value={location} onChange={onLocation} />
+            </Field>
+          </div>
+          {status !== "empty" && (
             <div className="flex items-baseline justify-between pt-1">
               <h2 className="text-[15px] font-[650] leading-5">{sectionTitle}</h2>
               {status === "ready" && <span className="text-[12px] text-giver-text2">{products.length} gifts · {makers} makers</span>}
             </div>
-            {status === "error" ? (
-              <Card className="p-4 text-center">
-                <p className="text-[14px]">Couldn’t reach the catalog.</p>
-                <TextLinkButton onClick={() => void search(photo, cue, occasion, budget, region)}>Try again</TextLinkButton>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-2 gap-2.5" aria-busy={loading} aria-live="polite">
-                {loading
-                  ? Array.from({ length: 4 }, (_, i) => <SkeletonTile key={i} />)
-                  : products.map((p) => (
-                      <ProductTile key={p.id} product={p} selected={selected?.id === p.id}
-                        onSelect={() => setSelected(selected?.id === p.id ? null : p)} />
-                    ))}
-              </div>
-            )}
-          </>
-        )}
+          )}
+        </div>
+
+        {/* Scroll region */}
+        <div className="-mx-5 mt-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-4">
+          {status === "empty" ? (
+            <EmptyState photo={photo} budget={budget} location={location} occasion={occasion} cue={cue}
+              onTryPhoto={() => fileRef.current?.click()} onWiden={() => onBudget(WIDE)}
+              onDescribe={() => { setPhoto(null); setAnalysis(null); setCue(null); setStep("occasion"); }}
+              onEverything={() => onCue(null)} />
+          ) : status === "error" ? (
+            <Card className="p-4 text-center">
+              <p className="text-[14px]">Couldn’t reach the catalog.</p>
+              <TextLinkButton onClick={() => void search(photo, cue, occasion, budget, region)}>Try again</TextLinkButton>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5" aria-busy={loading} aria-live="polite">
+              {loading
+                ? Array.from({ length: 4 }, (_, i) => <SkeletonTile key={i} />)
+                : products.map((p) => (
+                    <ProductTile key={p.id} product={p} selected={selected?.id === p.id}
+                      onSelect={() => setSelected(selected?.id === p.id ? null : p)} />
+                  ))}
+            </div>
+          )}
+        </div>
       </main>
 
-      <footer className="sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
+      <footer className="shrink-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
         <PrimaryButton disabled={!selected || loading}
           href={selected ? `/pick/${encodeURIComponent(selected.id)}` : undefined}
           onClick={() => { if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify(selected)); }}>
