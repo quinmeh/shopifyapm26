@@ -1,0 +1,49 @@
+// Create a gift (BRIEF §3 G3). Returns { id } for the /g/[id] link.
+import { nanoid } from "nanoid";
+import { saveGift } from "@/lib/store";
+import type { Gift, ProductSnapshot } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+
+type Body = {
+  recipientLabel?: string;
+  occasion?: string;
+  note?: string;
+  pick?: ProductSnapshot;
+  approvedSwaps?: ProductSnapshot[];
+};
+
+const isSnapshot = (p: unknown): p is ProductSnapshot =>
+  !!p && typeof p === "object" && typeof (p as ProductSnapshot).id === "string" &&
+  typeof (p as ProductSnapshot).title === "string" && typeof (p as ProductSnapshot).priceCents === "number";
+
+export async function POST(req: Request) {
+  let body: Body;
+  try {
+    body = (await req.json()) as Body;
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const note = (body.note ?? "").trim();
+  const recipientLabel = (body.recipientLabel ?? "").trim();
+  if (!isSnapshot(body.pick)) return Response.json({ error: "pick required" }, { status: 400 });
+  if (!note) return Response.json({ error: "note required" }, { status: 400 });
+  if (!recipientLabel) return Response.json({ error: "recipientLabel required" }, { status: 400 });
+  const approvedSwaps = (body.approvedSwaps ?? []).filter(isSnapshot).slice(0, 3);
+
+  const gift: Gift = {
+    id: nanoid(8),
+    createdAt: new Date().toISOString(),
+    giverName: process.env.NEXT_PUBLIC_GIVER_NAME || "Your friend",
+    recipientLabel,
+    occasion: (body.occasion ?? "").trim() || undefined,
+    note: note.slice(0, 500),
+    pick: body.pick,
+    approvedSwaps,
+    status: "sent",
+  };
+  await saveGift(gift);
+  console.log(`[api/gifts] created ${gift.id}: "${gift.pick.title}" + ${approvedSwaps.length} swaps for ${recipientLabel}`);
+  return Response.json({ id: gift.id }, { status: 201 });
+}

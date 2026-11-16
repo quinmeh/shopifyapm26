@@ -337,7 +337,10 @@ export function GiverSearch() {
       <footer className="shrink-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
         <PrimaryButton disabled={!selected || loading}
           href={selected ? `/pick/${encodeURIComponent(selected.id)}` : undefined}
-          onClick={() => { if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify(selected)); }}>
+          onClick={() => {
+            // Hand the pick page what it needs without a refetch (it falls back to get_product).
+            if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify({ product: selected, occasion, location }));
+          }}>
           {selected && !loading ? `Choose ${selected.shortName}` : "Choose a gift"}
         </PrimaryButton>
         {loading && clearedByPhoto && (

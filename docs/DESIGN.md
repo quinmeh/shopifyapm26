@@ -157,12 +157,13 @@ Filters shown as read-only chips under the photo card. Centered empty state: 64p
 
 ### 2 · Giver — Safety net + note (`/pick/[productId]`)
 1. BackButton + "Your pick"
-2. Pick card, horizontal: 116px image left; right: title, "{seller} · {city}", "{rating} ★ ({count}) · {price}", green check "Ships to Seattle"
-3. Card: title "If it's not quite her, she can choose one of these" + helper "Similar, within ${min}–${max}, from other makers. Remove any you wouldn't give." + 3 SwapMiniCards. All removed / none returned → note "One of a kind. She can confirm details and address, but there's nothing to swap to."
-4. NoteField
-5. Sticky footer: row [Secondary "Preview" (1/3)] [Primary "Create gift link" (2/3)] + caption "Nothing is charged until she confirms."
+2. Pick card, horizontal: 116px image left; right: title, "{seller}" (the catalog has no seller city — don't invent one), "{rating} ★ ({count}) · {price}", green check "Ships to {location}" / "Ships anywhere in the US"
+3. Card: title "If it's not quite them, they can choose one of these" + helper "Similar, within ${min}–${max}, other makers first. Remove any you wouldn't give." (the swap check prefers other makers but falls back to the same maker when short) + up to 3 SwapMiniCards (loading: spinner line "Checking the catalog for look-alikes…"). All removed / none returned → note "One of a kind. They can confirm details and address, but there's nothing to swap to."
+4. "Who's it for?" input (placeholder "your sister, a close friend, your dad…") — fills `recipientLabel`, which Screen 6 renders ("Your sister chose…"). Required.
+5. NoteField: label "What made you think of them?", helper "They read this first. It stays with the gift even if they choose another." Required.
+6. Sticky footer: row [Secondary "Preview" (1/3)] [Primary "Create gift link" (2/3)] + caption "Nothing is charged until they confirm." Both disabled until who + note are filled and the swap check has settled. Preview creates the gift (once) and opens `/g/[id]` in a new tab.
 
-After create: show share sheet / inline card with the link and a Copy button (simple; not on canvas).
+After create: the footer becomes a card "Your gift link" with the URL in a read-only input, a Copy button ("Copied" for ~2s), and "Send it however you like — text, email, a sticky note. Track it here." (→ `/gift/[id]`). Who/note lock.
 
 ### 3 · Recipient — Reveal (`/g/[id]`)
 Gift theme. AppHeader ("No account needed"). Centered: 112px clay-tint circle with clay gift icon; "Quynh sent you something" (14/550 text2); Display "For your new place"; NoteQuote. Footer: Primary "Open your gift" + caption "You'll confirm a few details. About 30 seconds."
