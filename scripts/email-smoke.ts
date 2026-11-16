@@ -13,7 +13,13 @@ async function main() {
   // Latest preview is first; extract only the high-entropy login token, without logging it.
   const token = inbox.match(/auth\/verify\?token=([A-Za-z0-9_-]{43})/)?.[1];
   assert.ok(token);
-  assert.equal((await fetch(`${base}/auth/verify?token=${token}`)).status, 200);
+  const verificationPage = await fetch(`${base}/auth/verify?token=${token}`);
+  assert.equal(verificationPage.status, 200);
+  assert.match(await verificationPage.text(), /name="referrer" content="strict-origin"/);
+  // A rejected request must not consume the token. Real browsers emit null for
+  // native forms under no-referrer; strict-origin fixes that at the page level.
+  const rejected = await fetch(base + "/api/auth/verify", { method: "POST", headers: { Origin: "null" }, body: new URLSearchParams({ token }), redirect: "manual" });
+  assert.equal(rejected.status, 403);
   const verify = () => fetch(base + "/api/auth/verify", { method: "POST", headers: { Origin: base }, body: new URLSearchParams({ token }), redirect: "manual" });
   const verified = await verify();
   assert.equal(verified.status, 303);

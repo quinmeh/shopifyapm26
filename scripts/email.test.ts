@@ -1,10 +1,32 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { consumeLogin, digest, issueLogin, safeReturn } from "../lib/giver-auth";
+import { consumeLogin, digest, issueLogin, safeReturn, sameOrigin } from "../lib/giver-auth";
 import { put, take } from "../lib/private-store";
 import { queueConfirmation, retryNotifications } from "../lib/notifications";
 import { toRecipientGift } from "../lib/recipient";
 import type { Gift } from "../lib/types";
+
+test("origin checks reject opaque and foreign origins while allowing local same-site aliases", () => {
+  const environment = process.env as Record<string, string | undefined>;
+  const previousMode = environment.NODE_ENV, previousUrl = environment.APP_URL;
+  environment.NODE_ENV = "development"; environment.APP_URL = "http://localhost:3000";
+  const request = (origin?: string, url = "http://127.0.0.1:3000/api/auth/verify") => new Request(url, { headers: origin ? { origin } : {} });
+  try {
+    assert.equal(sameOrigin(request("http://localhost:3000")), true);
+    assert.equal(sameOrigin(request("http://127.0.0.1:3000")), true);
+    assert.equal(sameOrigin(request("http://127.0.0.1:4000")), false);
+    assert.equal(sameOrigin(request("http://evil.example")), false);
+    assert.equal(sameOrigin(request("null")), false);
+    assert.equal(sameOrigin(request()), false);
+    assert.equal(sameOrigin(request("malformed")), false);
+    environment.NODE_ENV = "production"; environment.APP_URL = "https://gift.example";
+    assert.equal(sameOrigin(request("http://127.0.0.1:3000")), false);
+    assert.equal(sameOrigin(request("https://gift.example")), true);
+  } finally {
+    if (previousMode === undefined) delete environment.NODE_ENV; else environment.NODE_ENV = previousMode;
+    if (previousUrl === undefined) delete environment.APP_URL; else environment.APP_URL = previousUrl;
+  }
+});
 
 test("login links are single-use, expire, and reject external redirects", async () => {
   const url = new URL(await issueLogin("test@example.invalid", "https://evil.example"));

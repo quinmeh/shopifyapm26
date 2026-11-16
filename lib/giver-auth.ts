@@ -34,4 +34,19 @@ export async function giverEmail() {
 export async function ownsGift(gift: Gift) {
   const email = await giverEmail(); return !!email && email === gift.ownerEmail;
 }
-export function sameOrigin(req: Request) { return req.headers.get("origin") === appOrigin(); }
+export function sameOrigin(req: Request) {
+  const origin = req.headers.get("origin");
+  if (!origin || origin === "null") return false;
+  if (origin === appOrigin()) return true;
+  // Allow alternate loopback URLs only in development and only when the request
+  // targets that exact host/port. Production stays pinned to APP_URL.
+  if (process.env.NODE_ENV !== "development") return false;
+  try {
+    const source = new URL(origin);
+    const target = new URL(req.url);
+    return source.origin === origin && ["http:", "https:"].includes(source.protocol)
+      && ["localhost", "127.0.0.1", "[::1]"].includes(source.hostname)
+      && source.protocol === target.protocol
+      && source.host === (req.headers.get("host") ?? target.host);
+  } catch { return false; }
+}

@@ -1,5 +1,7 @@
 import { AppHeader, Screen } from "@/components/ui";
-export const metadata = { referrer: "no-referrer" as const, robots: { index: false, follow: false } };
+// Native POST forms need an Origin header. no-referrer makes it null in browsers;
+// strict-origin preserves the origin without exposing the token-bearing URL.
+export const metadata = { referrer: "strict-origin" as const, robots: { index: false, follow: false } };
 export default async function VerifyPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams;
   return <Screen><AppHeader /><main className="flex flex-col gap-4 px-5"><h1 className="text-[24px] font-bold">Verify your email</h1>
