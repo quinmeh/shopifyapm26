@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductSnapshot } from "@/lib/types";
 import { fileToPhoto, PhotoInputCard, type Photo } from "./photo-input-card";
+import { LocationPicker, type ShipLocation } from "./location-picker";
 import { ProductTile, SkeletonTile } from "./product-tile";
 import {
   AppHeader, Card, Chip, CreditFooter, Field, PrimaryButton, Screen, SearchIcon, SecondaryButton,
@@ -16,10 +17,6 @@ const BUDGETS: Budget[] = [
   { min: 6000, max: 12000, label: "$60 – $120" },
 ];
 const WIDE: Budget = { min: 1500, max: 8000, label: "$15 – $80" };
-const SHIPS = [
-  { value: "WA", label: "Seattle, WA" },
-  { value: "", label: "Anywhere in the US" },
-];
 const DEFAULT_OCCASION = "Her first apartment in Seattle";
 
 type Status = "idle" | "loading" | "ready" | "empty" | "error";
@@ -28,7 +25,7 @@ export function GiverSearch() {
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [occasion, setOccasion] = useState(DEFAULT_OCCASION);
   const [budget, setBudget] = useState<Budget>(BUDGETS[0]);
-  const [region, setRegion] = useState(SHIPS[0].value);
+  const [location, setLocation] = useState<ShipLocation>({ label: "Seattle, WA", region: "WA" });
   const [products, setProducts] = useState<ProductSnapshot[]>([]);
   const [makers, setMakers] = useState(0);
   const [status, setStatus] = useState<Status>("loading");
@@ -72,9 +69,9 @@ export function GiverSearch() {
   // context without adding a query, so the visual signal stays primary.
   // This also serves as the initial load (status starts as "loading").
   useEffect(() => {
-    const t = setTimeout(() => void search(photo, occasion, budget, region), 600);
+    const t = setTimeout(() => void search(photo, occasion, budget, location.region ?? ""), 600);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- budget/region/photo trigger immediately below
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- budget/location/photo trigger immediately below
   }, [occasion]);
 
   const onPhotoFile = async (file: File | undefined) => {
@@ -82,14 +79,14 @@ export function GiverSearch() {
     const p = await fileToPhoto(file);
     setPhoto(p);
     setClearedByPhoto(true);
-    void search(p, occasion, budget, region);
+    void search(p, occasion, budget, location.region ?? "");
   };
-  const onBudget = (b: Budget) => { setBudget(b); setClearedByPhoto(false); void search(photo, occasion, b, region); };
-  const onRegion = (r: string) => { setRegion(r); setClearedByPhoto(false); void search(photo, occasion, budget, r); };
+  const onBudget = (b: Budget) => { setBudget(b); setClearedByPhoto(false); void search(photo, occasion, b, location.region ?? ""); };
+  const onLocation = (next: ShipLocation) => { setLocation(next); setClearedByPhoto(false); void search(photo, occasion, budget, next.region ?? ""); };
   const describeInstead = () => {
     setPhoto(null);
     setClearedByPhoto(false);
-    void search(null, occasion, budget, region);
+    void search(null, occasion, budget, location.region ?? "");
     occasionRef.current?.focus();
   };
 
@@ -134,9 +131,7 @@ export function GiverSearch() {
             </select>
           </Field>
           <Field label="Ships to" htmlFor="ships">
-            <select id="ships" className={inputCls} value={region} onChange={(e) => onRegion(e.target.value)}>
-              {SHIPS.map((s) => <option key={s.label} value={s.value}>{s.label}</option>)}
-            </select>
+            <LocationPicker value={location} onChange={onLocation} />
           </Field>
         </div>
 
@@ -144,7 +139,7 @@ export function GiverSearch() {
           <EmptyState
             photo={photo}
             budget={budget}
-            region={region}
+            location={location}
             occasion={occasion}
             onTryPhoto={() => fileRef.current?.click()}
             onWiden={() => onBudget(WIDE)}
@@ -166,7 +161,7 @@ export function GiverSearch() {
             {status === "error" ? (
               <Card className="p-4 text-center">
                 <p className="text-[14px]">Couldn’t reach the catalog.</p>
-                <TextLinkButton onClick={() => void search(photo, occasion, budget, region)}>Try again</TextLinkButton>
+                <TextLinkButton onClick={() => void search(photo, occasion, budget, location.region ?? "")}>Try again</TextLinkButton>
               </Card>
             ) : (
               <div className="grid grid-cols-2 gap-2.5" aria-busy={loading} aria-live="polite">
@@ -207,16 +202,16 @@ export function GiverSearch() {
 }
 
 function EmptyState({
-  photo, budget, region, occasion, onTryPhoto, onWiden, onDescribe,
+  photo, budget, location, occasion, onTryPhoto, onWiden, onDescribe,
 }: {
-  photo: Photo | null; budget: Budget; region: string; occasion: string;
+  photo: Photo | null; budget: Budget; location: ShipLocation; occasion: string;
   onTryPhoto: () => void; onWiden: () => void; onDescribe: () => void;
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="flex flex-1 flex-col justify-center gap-4">
       <div className="flex flex-wrap gap-1.5">
         <Chip>{budget.label}</Chip>
-        <Chip>{SHIPS.find((s) => s.value === region)?.label}</Chip>
+        <Chip>{location.label}</Chip>
         {occasion && <Chip>{occasion}</Chip>}
       </div>
       <div className="flex flex-col items-center gap-2 px-4 pt-6 text-center">
