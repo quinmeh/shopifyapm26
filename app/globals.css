@@ -1,26 +1,71 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* DESIGN.md §2 tokens, expressed as Tailwind v4 @theme variables.
+   Usage: bg-giver-bg, text-gift-text2, border-clay, rounded-card, etc. */
+@theme {
+  --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+
+  --color-ink: #303030;
+  --color-ink-hover: #1a1a1a;
+  --color-surface: #ffffff;
+
+  --color-giver-bg: #f1f1f1;
+  --color-giver-border: #e3e3e3;
+  --color-giver-input: #cccccc;
+  --color-giver-text2: #616161;
+  --color-skeleton: #ebebeb;
+
+  --color-gift-bg: #faf6f0;
+  --color-gift-border: #eadfd3;
+  --color-gift-input: #d6c8b8;
+  --color-gift-text: #2b2522;
+  --color-gift-text2: #6b5e54;
+
+  --color-clay: #8c3a22;
+  --color-clay-tint: #f6e3d8;
+  --color-clay-wash: #fbf1eb;
+
+  --color-success: #29845a;
+  --color-success-text: #0c5132;
+  --color-success-tint: #cdfee1;
+
+  --color-disabled-bg: #e3e3e3;
+  --color-soldout-bg: #f7f3ee;
+  --color-soldout-text: #8a7e74;
+  --color-warning-bg: #fff4e5;
+  --color-warning-border: #f0d3a6;
+  --color-overlay: rgba(43, 37, 34, 0.28);
+
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-sheet: 20px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-giver-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Recipient routes opt into the warm theme (DESIGN.md §2 "Theme switch"). */
+[data-theme="gift"] {
+  color: var(--color-gift-text);
+  background: var(--color-gift-bg);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

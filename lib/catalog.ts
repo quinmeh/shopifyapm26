@@ -65,7 +65,7 @@ export type SearchArgs = {
   like?: LikeInput[];
   context?: { address_country?: string; intent?: string };
   filters?: {
-    ships_to?: { country: string };
+    ships_to?: { country: string; region?: string };
     price?: { min?: number; max?: number }; // minor units (cents)
     rating?: { variant?: { min?: number; min_count?: number } };
   };

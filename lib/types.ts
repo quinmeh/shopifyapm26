@@ -3,16 +3,16 @@
 export type ProductSnapshot = {
   id: string; // gid://shopify/p/...
   title: string;
+  shortName: string; // "the stoneware planter" — used in button copy
   imageUrl?: string;
   priceCents: number;
   sellerName?: string;
   sellerUrl?: string;
   refundPolicyUrl?: string;
-  url?: string;
+  rating?: { value: number; count: number };
 };
 
 export type Address = {
-  name: string;
   line1: string;
   city: string;
   region: string;
@@ -23,21 +23,27 @@ export type Address = {
 export type GiftStatus = "sent" | "confirmed" | "completed";
 
 export type Gift = {
-  id: string; // short nanoid, used in /g/[id]
+  id: string; // nanoid(8)
   createdAt: string;
-  giverName: string;
-  recipientName: string;
+  giverName: string; // "Quynh"
+  recipientLabel: string; // "your sister" (giver-side copy)
+  occasion?: string; // drives "For your new place"
   note: string;
-  reasons?: string; // "why this fits"
   pick: ProductSnapshot;
   approvedSwaps: ProductSnapshot[]; // 0–3
-  oneOfAKind: boolean; // true when approvedSwaps is empty
   status: GiftStatus;
   confirmation?: {
-    chosenProductId: string; // pick or a swap
+    chosenProductId: string;
     variantId: string;
     variantTitle: string;
     address: Address;
     confirmedAt: string;
   };
+};
+
+// Recipient-facing view: same shape minus every price (BRIEF §7).
+export type RecipientProduct = Omit<ProductSnapshot, "priceCents">;
+export type RecipientGift = Omit<Gift, "pick" | "approvedSwaps"> & {
+  pick: RecipientProduct;
+  approvedSwaps: RecipientProduct[];
 };
