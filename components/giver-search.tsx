@@ -1,34 +1,36 @@
 "use client";
-// Screen 1 · Start from a photo → Screen 1c · Her matches (photo read + cues + grid).
-// States 1a (reloading) and 1b (no matches) live on the matches step. DESIGN.md §4.
-import { useCallback, useRef, useState } from "react";
+// Giver flow on `/`: guided setup (1 photo → 2 occasion → 3 budget & ships-to) → 4 reading the photo → 5 her matches.
+// DESIGN.md §4 screens 1, 1·2, 1·3, 1·4, 1c, with states 1a (reloading) and 1b (no matches) on the matches screen.
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductSnapshot } from "@/lib/types";
 import { AnalysisCard, type AnalysisResult, type Cue } from "./analysis-card";
 import { fileToPhoto, PhotoInputCard, type Photo } from "./photo-input-card";
 import { LocationPicker, type ShipLocation } from "./location-picker";
 import { ProductTile, SkeletonTile } from "./product-tile";
 import {
-  AppHeader, BackButton, Card, Chip, CreditFooter, Field, PrimaryButton, Screen, SearchIcon,
-  SecondaryButton, TextLinkButton, inputCls,
+  AppHeader, BackButton, Card, CheckIcon, Chip, CreditFooter, Field, GiftIcon, PrimaryButton, ProgressDots, Screen,
+  SearchIcon, SecondaryButton, Spinner, TextLinkButton, inputCls,
 } from "./ui";
 
-type Budget = { min: number; max: number; label: string };
+type Budget = { min: number; max: number; label: string; hint: string };
 const BUDGETS: Budget[] = [
-  { min: 2500, max: 6000, label: "$25 – $60" },
-  { min: 1500, max: 3000, label: "$15 – $30" },
-  { min: 6000, max: 12000, label: "$60 – $120" },
+  { min: 1500, max: 3000, label: "$15 – $30", hint: "A small something" },
+  { min: 2500, max: 6000, label: "$25 – $60", hint: "Most gifts land here" },
+  { min: 6000, max: 12000, label: "$60 – $120", hint: "A proper present" },
 ];
-const WIDE: Budget = { min: 1500, max: 8000, label: "$15 – $80" };
+const WIDE: Budget = { min: 1500, max: 8000, label: "$15 – $80", hint: "Widened" };
 const DEFAULT_OCCASION = "Her first apartment in Seattle";
+const OCCASION_IDEAS = ["Her first apartment in Seattle", "Her birthday", "Just because"];
 
-type Step = "setup" | "matches";
+type Step = "photo" | "occasion" | "filters" | "reading" | "matches";
 type Status = "loading" | "ready" | "empty" | "error";
+const GUIDED: Step[] = ["photo", "occasion", "filters"];
 
 export function GiverSearch() {
-  const [step, setStep] = useState<Step>("setup");
+  const [step, setStep] = useState<Step>("photo");
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [occasion, setOccasion] = useState(DEFAULT_OCCASION);
-  const [budget, setBudget] = useState<Budget>(BUDGETS[0]);
+  const [budget, setBudget] = useState<Budget>(BUDGETS[1]);
   const [location, setLocation] = useState<ShipLocation>({ label: "Seattle, WA", region: "WA" });
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -44,8 +46,9 @@ export function GiverSearch() {
   const fileRef = useRef<HTMLInputElement>(null);
   const searchReq = useRef(0); // stale-response guards
   const analyzeReq = useRef(0);
+  const region = location.region ?? "";
 
-  // One search. A cue means "text search on that theme"; otherwise photo → pure visual, no photo → occasion text.
+  // One search. A cue = text search on that theme; else photo → pure visual; no photo → occasion text.
   const search = useCallback(async (p: Photo | null, c: Cue | null, occ: string, b: Budget, reg: string) => {
     const id = ++searchReq.current;
     setStatus("loading");
@@ -56,10 +59,7 @@ export function GiverSearch() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           photo: p && !c ? { contentType: p.contentType, data: p.data } : undefined,
-          occasion: occ,
-          cue: c?.query,
-          budget: { min: b.min, max: b.max },
-          region: reg || undefined,
+          occasion: occ, cue: c?.query, budget: { min: b.min, max: b.max }, region: reg || undefined,
         }),
       });
       if (id !== searchReq.current) return;
@@ -92,17 +92,23 @@ export function GiverSearch() {
     }
   }, []);
 
-  const region = location.region ?? "";
-
-  // "Find gifts": run the photo read and the visual search in parallel, then show the matches step.
+  // "Find gifts": photo read + visual search in parallel while the reading screen narrates.
   const findGifts = () => {
-    setStep("matches");
+    setStep("reading");
     setCue(null);
     setClearedByPhoto(false);
     if (photo) void analyze(photo, occasion);
     else setAnalysis(null);
     void search(photo, null, occasion, budget, region);
   };
+
+  // Reading screen auto-advances once both the read and the search have settled.
+  const readingDone = step === "reading" && !analyzing && status !== "loading";
+  useEffect(() => {
+    if (!readingDone) return;
+    const t = setTimeout(() => setStep("matches"), 1100);
+    return () => clearTimeout(t);
+  }, [readingDone]);
 
   const onPhotoFile = async (file: File | undefined) => {
     if (!file) return;
@@ -118,60 +124,148 @@ export function GiverSearch() {
   const onCue = (c: Cue | null) => { setCue(c); setClearedByPhoto(false); void search(photo, c, occasion, budget, region); };
   const onBudget = (b: Budget) => { setBudget(b); setClearedByPhoto(false); void search(photo, cue, occasion, b, region); };
   const onLocation = (next: ShipLocation) => { setLocation(next); setClearedByPhoto(false); void search(photo, cue, occasion, budget, next.region ?? ""); };
-  const describeInstead = () => {
-    setPhoto(null);
-    setAnalysis(null);
-    setCue(null);
-    setStep("setup");
-  };
 
-  const budgetOptions = budget === WIDE ? [...BUDGETS, WIDE] : BUDGETS;
   const loading = status === "loading";
-
   const fileInput = (
     <input ref={fileRef} type="file" accept="image/*" className="sr-only" aria-label="Choose a photo"
       onChange={(e) => void onPhotoFile(e.target.files?.[0])} />
   );
 
-  // ---------------- Screen 1 · setup ----------------
-  if (step === "setup") {
+  // ---------------- 1 · 2 · 3 — guided setup ----------------
+  if (GUIDED.includes(step)) {
+    const idx = GUIDED.indexOf(step);
     return (
       <Screen theme="giver">
-        <AppHeader right={<Chip>Prototype</Chip>} />
-        <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
-          <div className="pb-1">
-            <h1 className="text-[24px] font-bold leading-[30px] tracking-[-0.4px]">Start from something she loves</h1>
-            <p className="pt-1 text-[14px] leading-5 text-giver-text2">A photo of her taste finds real gifts from independent makers.</p>
-          </div>
-          {fileInput}
-          <PhotoInputCard photo={photo} searching={false} onChange={() => fileRef.current?.click()} />
-          <Field label="Occasion · optional" htmlFor="occasion">
-            <input id="occasion" className={inputCls} value={occasion} onChange={(e) => setOccasion(e.target.value)}
-              placeholder="Her first apartment in Seattle" />
-          </Field>
-          <FiltersRow budget={budget} budgetOptions={budgetOptions} location={location}
-            onBudget={(b) => setBudget(b)} onLocation={(l) => setLocation(l)} />
+        <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
+          {idx > 0 ? <BackButton onClick={() => setStep(GUIDED[idx - 1])} /> : <AppHeader inline />}
+          <span className="ml-auto"><ProgressDots total={GUIDED.length} current={idx} /></span>
+        </div>
+
+        <main className="flex flex-1 flex-col gap-4 px-5 pb-4">
+          {step === "photo" && (
+            <>
+              <Heading title="Start from something she loves" body="A photo of her taste finds real gifts from independent makers. Her windowsill, her mug, her bookshelf." />
+              {fileInput}
+              <button type="button" onClick={() => fileRef.current?.click()}
+                className={`flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-card bg-surface text-center ${photo ? "border-2 border-ink p-0" : "border border-dashed border-giver-input p-6"}`}>
+                {photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- local data URL
+                  <img src={photo.previewUrl} alt="" className="h-full max-h-[360px] w-full object-cover" />
+                ) : (
+                  <>
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-giver-bg text-ink"><GiftIcon size={24} /></span>
+                    <span className="text-[15px] font-semibold">Add a photo</span>
+                    <span className="text-[13px] text-giver-text2">From your camera roll or a screenshot</span>
+                  </>
+                )}
+              </button>
+              {photo && <p className="text-center text-[13px] text-giver-text2">{photo.title} · <button type="button" className="underline underline-offset-[3px]" onClick={() => fileRef.current?.click()}>Change</button></p>}
+            </>
+          )}
+
+          {step === "occasion" && (
+            <>
+              <Heading title="What’s the occasion?" body="Optional. It shapes the note she reads first, and the matches if there’s no photo." />
+              <Field label="Occasion" htmlFor="occasion">
+                <input id="occasion" className={`${inputCls} !h-12 text-[16px]`} value={occasion} autoFocus
+                  onChange={(e) => setOccasion(e.target.value)} placeholder="Her first apartment in Seattle" />
+              </Field>
+              <div className="flex flex-wrap gap-1.5">
+                {OCCASION_IDEAS.map((o) => (
+                  <button key={o} type="button" onClick={() => setOccasion(o)} aria-pressed={occasion === o}
+                    className={`h-9 rounded-full px-3 text-[13px] font-medium ${occasion === o ? "bg-ink text-white" : "border border-giver-input bg-surface text-ink"}`}>
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {step === "filters" && (
+            <>
+              <Heading title="Budget, and where it ships" body="Only in-stock gifts that ship there will show." />
+              <fieldset className="flex flex-col gap-2">
+                <legend className="pb-1 text-[13px] font-medium text-giver-text2">Budget</legend>
+                {BUDGETS.map((b) => {
+                  const on = budget.label === b.label;
+                  return (
+                    <button key={b.label} type="button" onClick={() => setBudget(b)} aria-pressed={on}
+                      className={`flex h-14 items-center justify-between rounded-card bg-surface px-4 text-left ${on ? "border-2 border-ink" : "border border-giver-border"}`}>
+                      <span><span className="tabular block text-[15px] font-semibold">{b.label}</span><span className="text-[12px] text-giver-text2">{b.hint}</span></span>
+                      {on && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white"><CheckIcon size={13} /></span>}
+                    </button>
+                  );
+                })}
+              </fieldset>
+              <Field label="Ships to" htmlFor="ships">
+                <LocationPicker value={location} onChange={setLocation} />
+              </Field>
+            </>
+          )}
         </main>
+
         <footer className="sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
-          <PrimaryButton onClick={findGifts}>{photo ? "Find gifts from her photo" : "Find gifts"}</PrimaryButton>
-          <p className="pt-2 text-center text-[12px] text-giver-text2">
-            {photo ? "We’ll read the photo, then show real matches." : "No photo yet — we’ll match on the occasion instead."}
-          </p>
+          {step === "photo" && (
+            <>
+              <PrimaryButton disabled={!photo} onClick={() => setStep("occasion")}>Continue</PrimaryButton>
+              <div className="flex justify-center"><TextLinkButton onClick={() => { setPhoto(null); setStep("occasion"); }}>Skip — describe her in words instead</TextLinkButton></div>
+            </>
+          )}
+          {step === "occasion" && <PrimaryButton onClick={() => setStep("filters")}>Continue</PrimaryButton>}
+          {step === "filters" && (
+            <>
+              <PrimaryButton onClick={findGifts}>{photo ? "Find gifts from her photo" : "Find gifts"}</PrimaryButton>
+              <p className="pt-2 text-center text-[12px] text-giver-text2">Nothing is bought until she confirms.</p>
+            </>
+          )}
           <CreditFooter />
         </footer>
       </Screen>
     );
   }
 
-  // ---------------- Screen 1c · matches ----------------
+  // ---------------- 4 — reading her photo ----------------
+  if (step === "reading") {
+    const cues = analysis?.cues ?? [];
+    const readFailed = !!analysis && cues.length === 0;
+    return (
+      <Screen theme="giver">
+        <AppHeader right={<Chip>Prototype</Chip>} />
+        <main className="flex flex-1 flex-col items-center justify-center gap-6 px-5 pb-10" aria-live="polite">
+          {photo && (
+            // eslint-disable-next-line @next/next/no-img-element -- local data URL
+            <img src={photo.previewUrl} alt="" className="h-24 w-24 rounded-card border border-giver-border object-cover" />
+          )}
+          <h1 className="text-center text-[24px] font-bold leading-[30px] tracking-[-0.4px]">
+            {photo ? (readingDone ? "Got it" : "Reading her photo") : (readingDone ? "Got it" : "Finding gifts")}
+          </h1>
+          <ol className="flex w-full max-w-[320px] flex-col gap-2.5">
+            {photo && (
+              <ReadStep done={!analyzing} failed={readFailed}
+                label={analyzing ? "Looking at the photo" : readFailed ? "Photo read is off — matching on the photo itself" : analysis?.read ?? "Looked at the photo"} />
+            )}
+            {cues.map((c, i) => (
+              <ReadStep key={c.label} done delay={i * 180} label={`Found: ${c.label}`} />
+            ))}
+            <ReadStep done={!loading} failed={status === "error"} delay={cues.length * 180}
+              label={loading ? "Searching independent makers" : status === "error" ? "Couldn’t reach the catalog" : status === "empty" ? "No in-stock matches yet" : `${products.length} gifts from ${makers} makers`} />
+          </ol>
+          <p className="text-[12px] text-giver-text2">About ten seconds.</p>
+        </main>
+      </Screen>
+    );
+  }
+
+  // ---------------- 5 — her matches ----------------
   const sectionTitle = loading
     ? cue ? `Finding gifts for the ${cue.label}…` : photo ? `Finding gifts that match her ${photo.title}…` : "Finding gifts…"
     : cue ? `Gifts for the ${cue.label}` : "Matches her taste";
+  const budgetOptions = budget === WIDE ? [...BUDGETS, WIDE] : BUDGETS;
 
   return (
     <Screen theme="giver">
       <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
-        <BackButton onClick={() => setStep("setup")} />
+        <BackButton onClick={() => setStep("filters")} />
         <span className="text-[15px] font-[650]">Her matches</span>
         <span className="ml-auto"><Chip>Prototype</Chip></span>
       </div>
@@ -180,11 +274,22 @@ export function GiverSearch() {
         {fileInput}
         <PhotoInputCard photo={photo} searching={loading && clearedByPhoto} onChange={() => fileRef.current?.click()} />
         {photo && <AnalysisCard analysis={analysis} loading={analyzing} active={cue} onPick={onCue} />}
-        <FiltersRow budget={budget} budgetOptions={budgetOptions} location={location} onBudget={onBudget} onLocation={onLocation} />
+        <div className="grid grid-cols-2 gap-2.5">
+          <Field label="Budget" htmlFor="budget">
+            <select id="budget" className={inputCls} value={budget.label}
+              onChange={(e) => onBudget(budgetOptions.find((b) => b.label === e.target.value)!)}>
+              {budgetOptions.map((b) => <option key={b.label} value={b.label}>{b.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Ships to" htmlFor="ships">
+            <LocationPicker value={location} onChange={onLocation} />
+          </Field>
+        </div>
 
         {status === "empty" ? (
           <EmptyState photo={photo} budget={budget} location={location} occasion={occasion} cue={cue}
-            onTryPhoto={() => fileRef.current?.click()} onWiden={() => onBudget(WIDE)} onDescribe={describeInstead}
+            onTryPhoto={() => fileRef.current?.click()} onWiden={() => onBudget(WIDE)}
+            onDescribe={() => { setPhoto(null); setAnalysis(null); setCue(null); setStep("occasion"); }}
             onEverything={() => onCue(null)} />
         ) : (
           <>
@@ -212,11 +317,9 @@ export function GiverSearch() {
       </main>
 
       <footer className="sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
-        <PrimaryButton
-          disabled={!selected || loading}
+        <PrimaryButton disabled={!selected || loading}
           href={selected ? `/pick/${encodeURIComponent(selected.id)}` : undefined}
-          onClick={() => { if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify(selected)); }}
-        >
+          onClick={() => { if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify(selected)); }}>
           {selected && !loading ? `Choose ${selected.shortName}` : "Choose a gift"}
         </PrimaryButton>
         {loading && clearedByPhoto && (
@@ -228,22 +331,23 @@ export function GiverSearch() {
   );
 }
 
-function FiltersRow({ budget, budgetOptions, location, onBudget, onLocation }: {
-  budget: Budget; budgetOptions: Budget[]; location: ShipLocation;
-  onBudget: (b: Budget) => void; onLocation: (l: ShipLocation) => void;
-}) {
+function Heading({ title, body }: { title: string; body: string }) {
   return (
-    <div className="grid grid-cols-2 gap-2.5">
-      <Field label="Budget" htmlFor="budget">
-        <select id="budget" className={inputCls} value={budget.label}
-          onChange={(e) => onBudget(budgetOptions.find((b) => b.label === e.target.value)!)}>
-          {budgetOptions.map((b) => <option key={b.label} value={b.label}>{b.label}</option>)}
-        </select>
-      </Field>
-      <Field label="Ships to" htmlFor="ships">
-        <LocationPicker value={location} onChange={onLocation} />
-      </Field>
+    <div className="pb-1">
+      <h1 className="text-[24px] font-bold leading-[30px] tracking-[-0.4px]">{title}</h1>
+      <p className="pt-1 text-[14px] leading-5 text-giver-text2">{body}</p>
     </div>
+  );
+}
+
+function ReadStep({ label, done, failed, delay = 0 }: { label: string; done: boolean; failed?: boolean; delay?: number }) {
+  return (
+    <li className="fade-up flex items-center gap-3 rounded-card border border-giver-border bg-surface px-3.5 py-3" style={{ animationDelay: `${delay}ms` }}>
+      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${done ? (failed ? "bg-giver-border text-giver-text2" : "bg-success text-white") : ""}`}>
+        {done ? (failed ? "–" : <CheckIcon size={13} />) : <Spinner label="Working" />}
+      </span>
+      <span className="text-[14px] leading-5">{label}</span>
+    </li>
   );
 }
 

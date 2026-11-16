@@ -118,19 +118,24 @@ Icons: inline stroke SVG (gift box, check, chevron, ✕, search, lock, refresh, 
 
 ## 4. Screens
 
-### 1 · Giver — Start from a photo (`/`, step 1 of 2)
-Order, top to bottom:
-1. AppHeader (Prototype chip)
-2. H1 "Start from something she loves" + body "A photo of her taste finds real gifts from independent makers."
-3. PhotoInputCard ("Her windowsill" / "From your photos" / Change; empty: "Add a photo of something she loves" / Choose photo)
-4. Occasion input (label "Occasion · optional", default "Her first apartment in Seattle")
-5. Row: Budget select ($25–$60 default; $15–$30; $60–$120) | Ships to (LocationPicker)
-6. Sticky footer: PrimaryButton "Find gifts from her photo" (no photo: "Find gifts") + caption "We'll read the photo, then show real matches." (no photo: "No photo yet — we'll match on the occasion instead.") + CreditFooter
+### 1 · Giver — Guided setup (`/`, three full-screen steps)
+Each step: header row (AppHeader brand on step 1, BackButton after) with **ProgressDots** (3) on the right; one H1 + body; one task; sticky footer with Primary "Continue".
 
-No search runs on this step. Tapping the button moves to 1c and starts the photo read and the visual search in parallel.
+- **1·1 Photo.** H1 "Start from something she loves"; body "A photo of her taste finds real gifts from independent makers. Her windowsill, her mug, her bookshelf." Full-height dashed upload card (gift icon, "Add a photo", "From your camera roll or a screenshot"); once chosen it fills with the photo (2px ink border) and a "{title} · Change" caption. Footer: Primary "Continue" (disabled until a photo) + TextLink "Skip — describe her in words instead".
+- **1·2 Occasion.** H1 "What's the occasion?"; body "Optional. It shapes the note she reads first, and the matches if there's no photo." 48px input (default "Her first apartment in Seattle") + idea chips ("Her first apartment in Seattle", "Her birthday", "Just because"). Footer: Primary "Continue".
+- **1·3 Budget & ships-to.** H1 "Budget, and where it ships"; body "Only in-stock gifts that ship there will show." Budget as three 56px option rows ($15–$30 "A small something"; $25–$60 "Most gifts land here", default; $60–$120 "A proper present") with ink border + check when selected; LocationPicker. Footer: Primary "Find gifts from her photo" (no photo: "Find gifts") + caption "Nothing is bought until she confirms."
 
-### 1c · Giver — Her matches (`/`, step 2 of 2)
-1. BackButton + "Her matches" + Prototype chip
+No search runs during setup. "Find gifts" starts the photo read and the visual search in parallel and shows 1·4.
+
+### 1·4 · Giver — Reading her photo (`/`, transitional)
+Centered: 96px photo thumbnail; H1 "Reading her photo" (no photo: "Finding gifts"; both become "Got it" when done). Then a list of **ReadStep** rows (white card, 24px status circle: spinner while working, green check when done, grey dash on failure), appearing one after another (180ms stagger):
+1. "Looking at the photo" → becomes the one-line taste read when the read returns (or "Photo read is off — matching on the photo itself")
+2. One row per detected cue: "Found: tuxedo cat"
+3. "Searching independent makers" → "6 gifts from 5 makers" (or "No in-stock matches yet" / "Couldn't reach the catalog")
+Caption "About ten seconds." Auto-advances to 1c ~1s after both the read and the search settle. No buttons.
+
+### 1c · Giver — Her matches (`/`)
+1. BackButton (→ 1·3) + "Her matches" + Prototype chip
 2. PhotoInputCard (Change re-reads and re-searches in place)
 3. **AnalysisCard** (photo only): title "What her photo says"; one-sentence taste read (text2); CueChips row: "Everything in the photo" (selected by default) + 3–5 detected cues ("tuxedo cat", "stack of paperbacks"). Loading: title "Reading her photo…" + two skeleton lines + three skeleton chips. Unavailable (no key / error): one line in text2, e.g. "Photo read is off — add ANTHROPIC_API_KEY to turn it on." Matches still show.
 4. Budget | Ships to row (changes re-search immediately)

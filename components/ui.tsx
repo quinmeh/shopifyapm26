@@ -56,17 +56,32 @@ export function Screen({ children, theme = "giver" }: { children: ReactNode; the
   );
 }
 
-export function AppHeader({ right }: { right?: ReactNode }) {
+export function AppHeader({ right, inline }: { right?: ReactNode; inline?: boolean }) {
+  const brand = (
+    <div className="flex items-center gap-2">
+      <span className="flex h-7 w-7 items-center justify-center rounded-control bg-ink text-white">
+        <GiftIcon size={15} />
+      </span>
+      <span className="text-[15px] font-[650]">Gift Confirm</span>
+    </div>
+  );
+  if (inline) return brand; // for rows that supply their own padding/right side
   return (
     <header className="flex items-center justify-between px-5 pt-[18px] pb-3">
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-control bg-ink text-white">
-          <GiftIcon size={15} />
-        </span>
-        <span className="text-[15px] font-[650]">Gift Confirm</span>
-      </div>
+      {brand}
       {right}
     </header>
+  );
+}
+
+// Guided-flow position: filled dot = current, ink dots = done, grey = upcoming.
+export function ProgressDots({ total, current }: { total: number; current: number }) {
+  return (
+    <span className="flex items-center gap-1.5" role="img" aria-label={`Step ${current + 1} of ${total}`}>
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className={`h-2 rounded-full ${i === current ? "w-5 bg-ink" : i < current ? "w-2 bg-ink" : "w-2 bg-giver-input"}`} />
+      ))}
+    </span>
   );
 }
 
