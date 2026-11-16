@@ -11,15 +11,15 @@ sends a link with a personal note. The recipient opens the link on their phone, 
 to an approved alternative. The giver then completes checkout with the final item's merchant.
 Differentiator: recipient confirm-or-swap **across every merchant in Shopify Catalog**, with no merchant setup.
 
-## 2. Product decisions (OWNER: Quynh — fill in before pasting)
+## 2. Product decisions (OWNER: Quynh)
 
 | Decision | Choice |
 |---|---|
-| Demo story: giver → recipient relationship | `TODO` (e.g., "me → my sister in Seattle, new apartment") |
-| Recipient sees on open | `TODO`: item immediately **or** "You have a gift from ___" reveal screen first |
-| Prices on recipient's swap screen | `TODO`: hidden **or** shown |
-| "Why this fits" reasons | `TODO`: giver writes them **or** AI drafts, giver edits |
-| Budget default | `TODO` (e.g., $20–$80) |
+| Demo story: giver → recipient relationship | Me → my sister, who just moved into her first apartment in Seattle |
+| Recipient sees on open | Reveal screen first: "Quynh sent you something for your new place" + note, tap to reveal the item |
+| Prices on recipient's swap screen | Hidden; show seller name instead |
+| "Why this fits" reasons | Giver writes them; prompt "What made you think of her?"; no AI drafting |
+| Budget default | $25–$60 |
 
 ## 3. Scope
 
