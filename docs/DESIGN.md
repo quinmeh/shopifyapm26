@@ -173,15 +173,15 @@ The headline uses the occasion if given ("For your new place"); fallback "A gift
 
 ### 4 · Recipient — Love it or swap (`/g/[id]/open`)
 1. BackButton + "Your gift from Quynh"
-2. Item card: image 168px (AlsoLikedTag if swapped); title 17/650; "Handmade by {seller}"; WhyCard
-3. Card "Size" with SizePills from `get_product` options (hide card if product has no options; one card per option name)
+2. Item card: image 168px (AlsoLikedTag "{Giver} also liked" if swapped); title 17/650; "From {seller}" (not "Handmade by" — the catalog can't verify that); WhyCard "Why {Giver} picked this"
+3. One card per option group from `get_product` (hidden if the product has none), e.g. "Size", "Color": SizePills; values with `exists: false` are not rendered, `available: false` renders sold out (disabled). Picking a value re-resolves the variant with `selected`; a spinner shows in the card header while stock is checked. Before options load: "Checking what's in stock…"
 4. Card "Where should it go?": street; row city / state / ZIP; lock icon + "Your address goes only to the shop."
-5. Footer: Primary "Love it — send it to me" → confirm; TextLinkButton "Not quite right? See {n} others Quynh picked" (hidden if one-of-a-kind)
+5. Footer: Primary "Love it — send it to me" → confirm; TextLinkButton "Not quite right? See {n} others {Giver} picked" (hidden if one-of-a-kind)
 
-Validation: address required (inline error under field, 13px). Variant required if options exist.
+Validation: address required (inline error under field, 13px, clay). Variant required if options exist ("Pick one of each option."); a sold-out combination blocks with "That combination is sold out — try another."
 
 ### 4a · Recipient — Swap panel open
-BottomSheet over screen 4 (blurred). Title "Quynh also liked these", subtitle "Pick whichever feels most like you. Her note comes with it." OptionRows: the original pick first (labelled "Her pick"), then approved alternatives. Selecting a row closes the sheet, swaps the item, resets variant selection, keeps address.
+BottomSheet over screen 4 (blurred). Title "{Giver} also liked these", subtitle "Pick whichever feels most like you. The note comes with it." OptionRows: the original pick first (labelled "{Giver}'s pick"), then approved alternatives; the current row is labelled "Selected". Selecting a row closes the sheet, swaps the item, resets variant selection, keeps address.
 
 ### 5 · Recipient — All set (`/g/[id]/done`)
 Centered: 88px success-tint circle with green check; Display "You're all set"; body "Quynh will finish sending it. You'll get the tracking link from the shop." Summary card (thumb, "{title} · {variant}", seller, "To {street}, {city}"). Clay pill "Quynh's note travels with your gift". Footer caption "You can close this page."

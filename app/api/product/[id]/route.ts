@@ -1,5 +1,6 @@
 // get_product passthrough: snapshot + option groups + the resolved variant.
-// `?for=recipient` strips every price (BRIEF §7). `?selected=Size:M,Color:Black` resolves a variant.
+// `?for=recipient` strips every price (BRIEF §7).
+// `?selected=<JSON [{name,label}]>` resolves a variant (JSON so labels may contain commas/colons).
 import { getProduct } from "@/lib/catalog";
 import { stripPrice, toSnapshot } from "@/lib/snapshot";
 
@@ -11,14 +12,15 @@ export async function GET(req: Request, ctx: RouteContext<"/api/product/[id]">) 
 
   const url = new URL(req.url);
   const forRecipient = url.searchParams.get("for") === "recipient";
-  const selected = (url.searchParams.get("selected") ?? "")
-    .split(",")
-    .filter(Boolean)
-    .map((pair) => {
-      const [name, label] = pair.split(":");
-      return { name, label };
-    })
-    .filter((s) => s.name && s.label);
+  let selected: { name: string; label: string }[] = [];
+  try {
+    const raw = url.searchParams.get("selected");
+    if (raw) selected = (JSON.parse(raw) as { name?: unknown; label?: unknown }[])
+      .filter((s) => typeof s.name === "string" && typeof s.label === "string")
+      .map((s) => ({ name: s.name as string, label: s.label as string }));
+  } catch {
+    return Response.json({ error: "selected must be JSON" }, { status: 400 });
+  }
 
   try {
     const p = await getProduct(selected.length ? { id, selected } : { id });

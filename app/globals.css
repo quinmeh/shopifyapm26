@@ -72,6 +72,15 @@ body {
   animation: fade-up 180ms ease-out both;
 }
 
+/* Bottom sheet slide (≤200ms, DESIGN.md §6). */
+@keyframes sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.sheet-up {
+  animation: sheet-up 200ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;

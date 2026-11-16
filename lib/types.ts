@@ -46,4 +46,9 @@ export type RecipientProduct = Omit<ProductSnapshot, "priceCents">;
 export type RecipientGift = Omit<Gift, "pick" | "approvedSwaps"> & {
   pick: RecipientProduct;
   approvedSwaps: RecipientProduct[];
+  headline: string; // reveal-screen display line from the occasion ("For your new place")
 };
+
+// What the recipient needs from get_product to pick a variant (no price, no checkout url).
+export type OptionGroup = { name: string; values?: { label: string; available?: boolean; exists?: boolean }[] };
+export type RecipientVariant = { id?: string; title?: string; available: boolean; options: { name: string; label: string }[] };
