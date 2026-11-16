@@ -118,18 +118,29 @@ Icons: inline stroke SVG (gift box, check, chevron, ✕, search, lock, refresh, 
 
 ## 4. Screens
 
-### 1 · Giver — Start from a photo (`/`)
+### 1 · Giver — Start from a photo (`/`, step 1 of 2)
 Order, top to bottom:
 1. AppHeader (Prototype chip)
 2. H1 "Start from something she loves" + body "A photo of her taste finds real gifts from independent makers."
-3. PhotoInputCard ("Her windowsill" / "From her Instagram story" / Change)
+3. PhotoInputCard ("Her windowsill" / "From your photos" / Change; empty: "Add a photo of something she loves" / Choose photo)
 4. Occasion input (label "Occasion · optional", default "Her first apartment in Seattle")
-5. Row: Budget select ($25–$60 default; $15–$30; $60–$120) | Ships to select (Seattle, WA; Anywhere in the US)
-6. Section row: "Matches her taste" + right "6 gifts · 5 makers"
-7. 2-column grid of ProductTiles (scrolls within page)
-8. Sticky footer (top border): PrimaryButton "Choose {short name}" (or disabled "Choose a gift" with no selection) + CreditFooter
+5. Row: Budget select ($25–$60 default; $15–$30; $60–$120) | Ships to (LocationPicker)
+6. Sticky footer: PrimaryButton "Find gifts from her photo" (no photo: "Find gifts") + caption "We'll read the photo, then show real matches." (no photo: "No photo yet — we'll match on the occasion instead.") + CreditFooter
 
-Behavior: selecting a tile updates the button label. See 1a/1b for reload and empty.
+No search runs on this step. Tapping the button moves to 1c and starts the photo read and the visual search in parallel.
+
+### 1c · Giver — Her matches (`/`, step 2 of 2)
+1. BackButton + "Her matches" + Prototype chip
+2. PhotoInputCard (Change re-reads and re-searches in place)
+3. **AnalysisCard** (photo only): title "What her photo says"; one-sentence taste read (text2); CueChips row: "Everything in the photo" (selected by default) + 3–5 detected cues ("tuxedo cat", "stack of paperbacks"). Loading: title "Reading her photo…" + two skeleton lines + three skeleton chips. Unavailable (no key / error): one line in text2, e.g. "Photo read is off — add ANTHROPIC_API_KEY to turn it on." Matches still show.
+4. Budget | Ships to row (changes re-search immediately)
+5. Section row: "Matches her taste" + right "6 gifts · 5 makers". With a cue selected: "Gifts for the {cue}". Loading: "Finding gifts that match her {photo title}…" / "Finding gifts for the {cue}…"
+6. 2-column grid of ProductTiles
+7. Sticky footer: PrimaryButton "Choose {short name}" (or disabled "Choose a gift") + CreditFooter
+
+Behavior: "Everything in the photo" = pure visual search (no text — text overrides the image signal). A cue chip = text search on that cue's query. Selecting a tile updates the button label. See 1a/1b for reload and empty.
+
+**CueChip**: 36px tall pill, 13/500. Default white + `giver-input-border`; selected ink bg, white text, leading check icon. `aria-pressed`.
 
 ### 1a · Giver — Matches reloading
 Same layout. PhotoInputCard shows new photo with 2px ink border, subtitle "New photo · searching", spinner. Section title "Finding gifts that match her {photo title}…". Grid = 4 SkeletonTiles. Footer button disabled "Choose a gift", caption "Previous selection cleared · new photo, new matches".
@@ -137,7 +148,7 @@ Same layout. PhotoInputCard shows new photo with 2px ink border, subtitle "New p
 Triggers: new photo → immediately; budget/ships-to change → immediately; occasion text → 600ms debounce. Drop responses from stale requests.
 
 ### 1b · Giver — No matches
-Filters shown as read-only chips under the photo card. Centered empty state: 64px white circle with search icon, title "Nothing matched this photo" (17/650), body "Photos of objects she owns or likes work best. Landscapes and people are hard to match to gifts." Actions stacked: Primary "Try a different photo", Secondary "Widen budget to $15 – $80", TextLink "Describe her in words instead". CreditFooter at bottom.
+Filters shown as read-only chips under the photo card. Centered empty state: 64px white circle with search icon, title "Nothing matched this photo" (17/650), body "Photos of objects she owns or likes work best. Landscapes and people are hard to match to gifts." Actions stacked: Primary "Try a different photo", Secondary "Widen budget to $15 – $80", TextLink "Describe her in words instead" (returns to step 1 without the photo). With a cue selected: title "Nothing for the {cue} in this budget", Primary "Back to everything in the photo". CreditFooter at bottom.
 
 ### 2 · Giver — Safety net + note (`/pick/[productId]`)
 1. BackButton + "Your pick"

@@ -40,7 +40,8 @@ Differentiator: recipient confirm-or-choose **across every merchant in Shopify C
 ## 3. Scope
 
 **Build with real API calls**
-- Photo search (+ text fallback) → `search_catalog`
+- Photo read → Claude vision (`POST /api/analyze`): 3–5 detected cues + one-line taste read. Cues are tappable themed searches. The only AI call in the app; degrades to "Photo read is off" without `ANTHROPIC_API_KEY`.
+- Photo search (+ text fallback) → `search_catalog`. Verified: any `query` sent with an image overrides the visual signal, so photo search is pure visual; cues and the no-photo path are text searches.
 - Swap check on the pick → `search_catalog` with `like: [{id}]`
 - Recipient variant options → `get_product`
 - Re-check before checkout → `get_product`, then open variant `checkout_url`
@@ -174,6 +175,7 @@ UCP_PROFILE_URL=https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 NEXT_PUBLIC_GIVER_NAME=Quynh
+ANTHROPIC_API_KEY=            # photo read (Screen 1c); optional — step degrades gracefully without it
 ```
 
 ## 11. Reflection notes (for the demo's last 45 seconds, not for building)

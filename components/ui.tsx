@@ -70,6 +70,12 @@ export function AppHeader({ right }: { right?: ReactNode }) {
   );
 }
 
+export function BackButton({ onClick, href }: { onClick?: () => void; href?: string }) {
+  const cls = "flex h-9 w-9 items-center justify-center rounded-control border border-giver-input bg-surface text-ink";
+  if (href) return <Link href={href} aria-label="Back" className={cls}><ChevronLeftIcon /></Link>;
+  return <button type="button" aria-label="Back" onClick={onClick} className={cls}><ChevronLeftIcon /></button>;
+}
+
 export function Chip({ children }: { children: ReactNode }) {
   return (
     <span className="rounded-full border border-giver-border bg-surface px-2.5 py-1 text-[12px] font-medium text-giver-text2">
