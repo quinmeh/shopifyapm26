@@ -96,6 +96,8 @@ variant `id, title, price, checkout_url, availability.status, options, seller{na
 
 If a filter shape is rejected (e.g. `rating`), log it, drop that filter, and continue. Don't invent fields.
 
+**Verified Nov 2026:** the `rating` filter is accepted but starves results on both image and text searches — a Seattle-skyline photo returned eSIMs and coffee with it, Seattle skyline prints without it; "space needle" returned punch-needle kits with it, Space Needle ornaments and models without it. The app sends no rating filter and shows ratings on tiles instead. `like` accepts exactly one entry (image or id). `context.intent` wording has no measurable effect on visual results.
+
 ## 6. Data model
 
 ```ts
