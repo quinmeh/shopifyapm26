@@ -22,9 +22,9 @@ export function PhotoInputCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-semibold">{photo ? photo.title : "Add a photo of something she loves"}</p>
+        <p className="truncate text-[14px] font-semibold">{photo ? photo.title : "Add a photo of something they love"}</p>
         <p className="flex items-center gap-1.5 text-[12px] text-giver-text2">
-          {photo ? (searching ? "New photo · searching" : "From your photos") : "Her windowsill, her mug, her bookshelf"}
+          {photo ? (searching ? "New photo · searching" : "From your photos") : "Their windowsill, mug or bookshelf"}
           {searching && photo && <Spinner />}
         </p>
       </div>
@@ -47,7 +47,7 @@ export async function fileToPhoto(file: File): Promise<Photo> {
   const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
   return {
     previewUrl: dataUrl,
-    title: file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ") || "Her photo",
+    title: file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ") || "Their photo",
     data: dataUrl.split(",")[1],
     contentType: "image/jpeg",
   };

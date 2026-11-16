@@ -1,4 +1,4 @@
-// Screen 1c · "What her photo says" — Claude's read of the photo plus tappable cue chips.
+// Screen 1c · "What the photo says" — Claude's read of the photo plus tappable cue chips.
 // Tapping a cue re-searches on that theme; "Everything" restores the pure-visual matches.
 import { CheckIcon } from "./ui";
 
@@ -25,7 +25,7 @@ export function AnalysisCard({
   return (
     <section className="rounded-card border border-giver-border bg-surface p-3.5" aria-busy={loading}>
       <h2 className="text-[14px] font-[650] leading-5">
-        {loading ? "Reading her photo…" : analysis?.source === "catalog" ? "What the matches point to" : "What her photo says"}
+        {loading ? "Reading the photo…" : analysis?.source === "catalog" ? "What the matches point to" : "What the photo says"}
       </h2>
 
       {loading ? (

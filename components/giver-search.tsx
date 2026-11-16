@@ -1,5 +1,5 @@
 "use client";
-// Giver flow on `/`: guided setup (1 photo → 2 occasion → 3 budget & ships-to) → 4 reading the photo → 5 her matches.
+// Giver flow on `/`: guided setup (1 photo → 2 occasion → 3 budget & ships-to) → 4 reading the photo → 5 matches.
 // DESIGN.md §4 screens 1, 1·2, 1·3, 1·4, 1c, with states 1a (reloading) and 1b (no matches) on the matches screen.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductSnapshot } from "@/lib/types";
@@ -19,8 +19,8 @@ const BUDGETS: Budget[] = [
   { min: 6000, max: 12000, label: "$60 – $120", hint: "A proper present" },
 ];
 const WIDE: Budget = { min: 1500, max: 8000, label: "$15 – $80", hint: "Widened" };
-const DEFAULT_OCCASION = "Her first apartment in Seattle";
-const OCCASION_IDEAS = ["Her first apartment in Seattle", "Her birthday", "Just because"];
+const DEFAULT_OCCASION = "First apartment in Seattle";
+const OCCASION_IDEAS = ["First apartment in Seattle", "A birthday", "Just because"];
 
 type Step = "photo" | "occasion" | "filters" | "reading" | "matches";
 type Status = "loading" | "ready" | "empty" | "error";
@@ -158,7 +158,7 @@ export function GiverSearch() {
         <main className="flex flex-1 flex-col gap-4 px-5 pb-4">
           {step === "photo" && (
             <>
-              <Heading title="Start from something she loves" body="A photo of her taste finds real gifts from independent makers. Her windowsill, her mug, her bookshelf." />
+              <Heading title="Start from something they love" body="A photo of their taste finds real gifts from independent makers. Their windowsill, their mug, their bookshelf." />
               {fileInput}
               <button type="button" onClick={() => fileRef.current?.click()}
                 className={`flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-card bg-surface text-center ${photo ? "border-2 border-ink p-0" : "border border-dashed border-giver-input p-6"}`}>
@@ -179,10 +179,10 @@ export function GiverSearch() {
 
           {step === "occasion" && (
             <>
-              <Heading title="What’s the occasion?" body="Optional. It shapes the note she reads first, and the matches if there’s no photo." />
+              <Heading title="What’s the occasion?" body="Optional. It shapes the note they read first, and the matches if there’s no photo." />
               <Field label="Occasion" htmlFor="occasion">
                 <input id="occasion" className={`${inputCls} !h-12 text-[16px]`} value={occasion} autoFocus
-                  onChange={(e) => setOccasion(e.target.value)} placeholder="Her first apartment in Seattle" />
+                  onChange={(e) => setOccasion(e.target.value)} placeholder="First apartment in Seattle" />
               </Field>
               <div className="flex flex-wrap gap-1.5">
                 {OCCASION_IDEAS.map((o) => (
@@ -222,14 +222,14 @@ export function GiverSearch() {
           {step === "photo" && (
             <>
               <PrimaryButton disabled={!photo} onClick={() => setStep("occasion")}>Continue</PrimaryButton>
-              <div className="flex justify-center"><TextLinkButton onClick={() => { setPhoto(null); setStep("occasion"); }}>Skip — describe her in words instead</TextLinkButton></div>
+              <div className="flex justify-center"><TextLinkButton onClick={() => { setPhoto(null); setStep("occasion"); }}>Skip — describe them in words instead</TextLinkButton></div>
             </>
           )}
           {step === "occasion" && <PrimaryButton onClick={() => setStep("filters")}>Continue</PrimaryButton>}
           {step === "filters" && (
             <>
-              <PrimaryButton onClick={findGifts}>{photo ? "Find gifts from her photo" : "Find gifts"}</PrimaryButton>
-              <p className="pt-2 text-center text-[12px] text-giver-text2">Nothing is bought until she confirms.</p>
+              <PrimaryButton onClick={findGifts}>{photo ? "Find gifts from the photo" : "Find gifts"}</PrimaryButton>
+              <p className="pt-2 text-center text-[12px] text-giver-text2">Nothing is bought until they confirm.</p>
             </>
           )}
           <CreditFooter />
@@ -238,7 +238,7 @@ export function GiverSearch() {
     );
   }
 
-  // ---------------- 4 — reading her photo ----------------
+  // ---------------- 4 — reading the photo ----------------
   if (step === "reading") {
     const cues = analysis?.cues ?? [];
     const readFailed = !!analysis && cues.length === 0;
@@ -251,7 +251,7 @@ export function GiverSearch() {
             <img src={photo.previewUrl} alt="" className="h-24 w-24 rounded-card border border-giver-border object-cover" />
           )}
           <h1 className="text-center text-[24px] font-bold leading-[30px] tracking-[-0.4px]">
-            {photo ? (readingDone ? "Got it" : "Reading her photo") : (readingDone ? "Got it" : "Finding gifts")}
+            {photo ? (readingDone ? "Got it" : "Reading the photo") : (readingDone ? "Got it" : "Finding gifts")}
           </h1>
           <ol className="flex w-full max-w-[320px] flex-col gap-2.5">
             {photo && (
@@ -270,17 +270,17 @@ export function GiverSearch() {
     );
   }
 
-  // ---------------- 5 — her matches ----------------
+  // ---------------- 5 — matches ----------------
   const sectionTitle = loading
-    ? cue ? `Finding gifts for the ${cue.label}…` : photo ? `Finding gifts that match her ${photo.title}…` : "Finding gifts…"
-    : cue ? `Gifts for the ${cue.label}` : "Matches her taste";
+    ? cue ? `Finding gifts for the ${cue.label}…` : photo ? `Finding gifts that match the photo…` : "Finding gifts…"
+    : cue ? `Gifts for the ${cue.label}` : "Matches their taste";
   const budgetOptions = budget === WIDE ? [...BUDGETS, WIDE] : BUDGETS;
 
   return (
     <Screen theme="giver">
       <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
         <BackButton onClick={() => setStep("filters")} />
-        <span className="text-[15px] font-[650]">Her matches</span>
+        <span className="text-[15px] font-[650]">Matches</span>
         <span className="ml-auto"><Chip>Prototype</Chip></span>
       </div>
 
@@ -382,14 +382,14 @@ function EmptyState({ photo, budget, location, occasion, cue, onTryPhoto, onWide
           {cue ? `Nothing for the ${cue.label} in this budget` : photo ? "Nothing matched this photo" : "Nothing matched"}
         </h2>
         <p className="text-[14px] leading-5 text-giver-text2">
-          Photos of objects she owns or likes work best. Landscapes and people are hard to match to gifts.
+          Photos of objects they own or like work best. Landscapes and people are hard to match to gifts.
         </p>
       </div>
       <div className="flex flex-col items-center gap-2 pt-2">
         {cue ? <PrimaryButton onClick={onEverything}>Back to everything in the photo</PrimaryButton>
              : <PrimaryButton onClick={onTryPhoto}>Try a different photo</PrimaryButton>}
         {budget !== WIDE && <SecondaryButton onClick={onWiden}>Widen budget to {WIDE.label}</SecondaryButton>}
-        {photo && <TextLinkButton onClick={onDescribe}>Describe her in words instead</TextLinkButton>}
+        {photo && <TextLinkButton onClick={onDescribe}>Describe them in words instead</TextLinkButton>}
       </div>
     </div>
   );

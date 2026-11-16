@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 
 export const metadata: Metadata = {
   title: "Gift Confirm",
-  description: "You choose the thought. She finishes the details.",
+  description: "You choose the thought. They finish the details.",
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
