@@ -177,7 +177,7 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
             <div className="w-[96px] shrink-0">{field("postalCode", "ZIP", { autoComplete: "postal-code", inputMode: "numeric" })}</div>
           </div>
           <p className="flex items-center gap-1.5 text-[12px] text-gift-text2">
-            <LockIcon /> Your address goes only to the shop.
+            <LockIcon /> Your address is saved for this gift and shared with the giver to finish checkout.
           </p>
         </GiftCard>
       </main>

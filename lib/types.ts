@@ -23,6 +23,7 @@ export type Address = {
 export type GiftStatus = "sent" | "confirmed" | "completed";
 
 export type Gift = {
+  ownerEmail?: string; // server-side ownership; never sent to recipient views
   id: string; // nanoid(8)
   createdAt: string;
   giverName: string; // "Quynh"
@@ -44,7 +45,7 @@ export type Gift = {
 
 // Recipient-facing view: same shape minus every price (BRIEF §7).
 export type RecipientProduct = Omit<ProductSnapshot, "priceCents">;
-export type RecipientGift = Omit<Gift, "pick" | "approvedSwaps"> & {
+export type RecipientGift = Omit<Gift, "pick" | "approvedSwaps" | "ownerEmail"> & {
   pick: RecipientProduct;
   approvedSwaps: RecipientProduct[];
   headline: string; // reveal-screen display line from the occasion ("For your new place")

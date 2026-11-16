@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { formatCents } from "@/lib/catalog";
 import type { ProductSnapshot } from "@/lib/types";
 import { SwapMiniCard } from "./swap-mini-card";
+import { GiverEmail } from "./giver-email";
 import {
   BackButton, Card, CheckIcon, CreditFooter, Field, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
   TextLinkButton, inputCls,
@@ -26,6 +27,7 @@ export function PickScreen({ productId }: { productId: string }) {
   const [swaps, setSwaps] = useState<SwapState>({ status: "loading", items: [], removed: [] });
   const [recipientLabel, setRecipientLabel] = useState("");
   const [note, setNote] = useState("");
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ id: string; url: string } | null>(null);
@@ -82,7 +84,7 @@ export function PickScreen({ productId }: { productId: string }) {
 
   const approved = swaps.items.filter((s) => !swaps.removed.includes(s.id));
   const oneOfAKind = swaps.status === "ready" && approved.length === 0;
-  const canCreate = !!ctx && swaps.status !== "loading" && note.trim().length > 0 && recipientLabel.trim().length > 0 && !creating;
+  const canCreate = !!ctx && !!verifiedEmail && swaps.status !== "loading" && note.trim().length > 0 && recipientLabel.trim().length > 0 && !creating;
 
   const create = async (): Promise<string | null> => {
     if (created) return created.id;
@@ -95,13 +97,13 @@ export function PickScreen({ productId }: { productId: string }) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: ctx.product, approvedSwaps: approved }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (!r.ok) throw new Error((await r.json()).error ?? "Couldn’t create the gift.");
       const j = (await r.json()) as { id: string };
       const url = `${window.location.origin}/g/${j.id}`;
       setCreated({ id: j.id, url });
       return j.id;
-    } catch {
-      setCreateError("Couldn’t create the gift. Try again.");
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : "Couldn’t create the gift. Try again.");
       return null;
     } finally {
       setCreating(false);
@@ -243,6 +245,7 @@ export function PickScreen({ productId }: { productId: string }) {
           )}
         </Card>
 
+        {!created && <GiverEmail onVerified={setVerifiedEmail} />}
         {/* Who + note */}
         <Field label="Who’s it for?" htmlFor="who">
           <input id="who" className={inputCls} value={recipientLabel} onChange={(e) => setRecipientLabel(e.target.value)}

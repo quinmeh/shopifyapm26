@@ -102,7 +102,7 @@ export function AppHeader({ right, inline }: { right?: ReactNode; inline?: boole
       <span className="text-[15px] font-[650]">Gift Confirm</span>
     </div>
   );
-  if (inline) return brand; // for rows that supply their own padding/right side
+  if (inline) return <a href="/gifts" aria-label="Gift Confirm — my gifts">{brand}</a>;
   return (
     <header className="flex items-center justify-between px-5 pt-[18px] pb-3">
       {brand}

@@ -34,7 +34,7 @@ Differentiator: recipient confirm-or-choose **across every merchant in Shopify C
 | Swap range | Up to 3 giver-approved alternatives, ±15% of pick price, any merchant |
 | One-of-a-kind | If 0 alternatives: warn, never filter the item out |
 | Payment timing | Giver pays only after recipient confirms, on the merchant's own checkout |
-| Address copy | "Your address goes only to the shop." |
+| Address copy | "Your address is saved for this gift and shared with the giver to finish checkout." |
 | Branding | DESIGN.md direction B. No Shopify logo. Plain-text credit "Built on Shopify Catalog + UCP". |
 
 ## 3. Scope
@@ -52,8 +52,10 @@ Differentiator: recipient confirm-or-choose **across every merchant in Shopify C
 - Gift "completed" status (set manually when the giver clicks through)
 
 **Do not build**
-Accounts/auth, payments, email/SMS sending (copy-link only), multiple recipients, reminders, auto-ship fallback,
+Payments, SMS notification sending, multiple recipients, reminders, auto-ship fallback,
 thank-you reply, wishlists, real UCP `create_checkout` (needs signed/token tier; anonymous profiles get no checkout tools).
+
+User-approved extension: passwordless giver email verification, private `/gifts` tracking, and email notifications on recipient confirmation. Recipients remain account-free. See `EMAIL.md` for delivery configuration and local preview.
 
 ## 4. Stack
 

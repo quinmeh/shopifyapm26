@@ -22,3 +22,9 @@ Without Upstash env vars the gift store is an in-memory Map (resets on restart).
 4. `vercel --prod`. Verify `https://<app>.vercel.app/api/health` returns `"storage": "upstash"`.
 
 All Shopify catalog calls run server-side in `app/api/*` via [lib/catalog.ts](lib/catalog.ts).
+
+## Giver verification and notifications
+
+Givers verify their email before creating a gift and can recover their private tracking pages at `/gifts`. Recipients remain account-free. See [docs/EMAIL.md](docs/EMAIL.md) for Resend credentials, required production Redis storage, scheduled notification retries, and local `/dev/mail` preview. Preview emails do not send real mail.
+
+Verification: `node --import tsx --test scripts/email.test.ts scripts/checkout.test.ts`. With the local server running and email preview enabled, `node --import tsx scripts/email-smoke.ts` exercises verification, access control, confirmation notifications, and logout.

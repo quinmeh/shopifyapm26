@@ -5,7 +5,9 @@ import type { Gift, RecipientGift } from "./types";
 
 export function toRecipientGift(gift: Gift): RecipientGift {
   return {
-    ...gift,
+    id: gift.id, createdAt: gift.createdAt, giverName: gift.giverName,
+    recipientLabel: gift.recipientLabel, occasion: gift.occasion, note: gift.note,
+    status: gift.status, confirmation: gift.confirmation,
     pick: stripPrice(gift.pick),
     approvedSwaps: gift.approvedSwaps.map(stripPrice),
     headline: occasionProfile(gift.occasion ?? "").headline,

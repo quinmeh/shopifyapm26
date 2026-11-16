@@ -1,10 +1,13 @@
 import { checkCheckout } from "@/lib/checkout";
+import { ownsGift, sameOrigin } from "@/lib/giver-auth";
 import { getGift, saveGift } from "@/lib/store";
 
 export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/checkout">) {
+  if (!sameOrigin(req)) return new Response("Invalid origin", { status: 403 });
   const { id } = await ctx.params;
   const gift = await getGift(id);
   if (!gift) return Response.json({ error: "Not found" }, { status: 404 });
+  if (!await ownsGift(gift)) return Response.json({ error: "Giver access required" }, { status: 403 });
   if (!gift.confirmation) return Response.json({ error: "Waiting for confirmation" }, { status: 409 });
   let body;
   try { body = await req.json(); } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }); }

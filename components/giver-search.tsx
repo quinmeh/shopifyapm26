@@ -275,7 +275,7 @@ export function GiverSearch() {
     ];
     return (
       <Screen theme="giver">
-        <AppHeader right={<Chip>Prototype</Chip>} />
+        <AppHeader right={<a href="/gifts" className="flex min-h-11 items-center text-[13px] underline">My gifts</a>} />
         <main className="flex flex-1 flex-col items-center justify-center gap-6 px-5 pb-10" aria-live="polite">
           {photo && (
             // eslint-disable-next-line @next/next/no-img-element -- local data URL

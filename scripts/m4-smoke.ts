@@ -1,14 +1,19 @@
 import assert from "node:assert/strict";
 
 const base = "http://127.0.0.1:3000";
+// Supply a verified giver session cookie; email-smoke.ts covers creating one locally.
+const cookie = process.env.GIVER_SESSION_COOKIE ?? "";
+const origin = process.env.APP_URL ?? "http://localhost:3000";
+const get = (path: string) => fetch(base + path, { headers: { Cookie: cookie } });
 async function post(path: string, body: unknown = {}) {
-  return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", Cookie: cookie, Origin: origin }, body: JSON.stringify(body) });
 }
 async function main() {
+  assert.ok(cookie, "Set GIVER_SESSION_COOKIE to a verified local giver session before running M4 smoke tests.");
   const created = await post("/api/gifts", { recipientLabel: "your test recipient", note: "M4 smoke test", pick: { id: "gid://shopify/p/m4-test", title: "Test item", shortName: "the test item", priceCents: 4000 } });
   assert.equal(created.status, 201);
   const { id } = await created.json();
-  const page = await fetch(`${base}/gift/${id}`);
+  const page = await get(`/gift/${id}`);
   assert.equal(page.status, 200);
   assert.match(await page.text(), /Waiting for/);
   assert.equal((await post(`/api/gifts/${id}/checkout`)).status, 409);
@@ -17,7 +22,7 @@ async function main() {
   const data = await (await fetch(`${base}/api/gifts/${id}?for=recipient`)).json();
   assert.deepEqual(data.confirmation.selected, confirmation.selected);
   assert.ok(!JSON.stringify(data).includes("priceCents"));
-  const confirmedPage = await fetch(`${base}/gift/${id}`);
+  const confirmedPage = await get(`/gift/${id}`);
   assert.equal(confirmedPage.status, 200);
   assert.match(await confirmedPage.text(), /loved your pick/);
   assert.equal((await post(`/api/gifts/${id}/checkout`, null)).status, 400);

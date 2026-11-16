@@ -162,7 +162,8 @@ Filters shown as read-only chips under the photo card. Centered empty state: 64p
 3. Card: title "If it's not quite them, they can choose one of these" + helper "Similar, within ${min}–${max}, other makers first. Remove any you wouldn't give." (the swap check prefers other makers but falls back to the same maker when short) + up to 3 SwapMiniCards (loading: spinner line "Checking the catalog for look-alikes…"). All removed / none returned → note "One of a kind. They can confirm details and address, but there's nothing to swap to."
 4. "Who's it for?" input (placeholder "your sister, a close friend, your dad…") — fills `recipientLabel`, which Screen 6 renders ("Your sister chose…"). Required.
 5. NoteField: label "What made you think of them?", helper "They read this first. It stays with the gift even if they choose another." Required.
-6. Sticky footer: Primary "Create gift link" + caption "Nothing is charged until they confirm." Disabled until who + note are filled and the swap check has settled. The generated link card can be opened after creation.
+6. Giver email card: "Where should we notify you when they choose?" Email verification opens a private, passwordless session. The original creation tab detects verification on focus. Recipient links stay account-free.
+7. Sticky footer: Primary "Create gift link" + caption "Nothing is charged until they confirm." Disabled until the giver email is verified, who + note are filled, and the swap check has settled. The generated link card can be opened after creation.
 
 After create: the footer becomes a card "Your gift link" with the URL in a read-only input, a Copy button ("Copied" for ~2s), platform actions for Text, Gmail, Instagram, and More, and a Track link (→ `/gift/[id]`). Text/Gmail open compose surfaces; Instagram copies the link and opens the DM inbox. Nothing sends automatically. Who/note lock.
 
@@ -175,7 +176,7 @@ The headline uses the occasion if given ("For your new place"); fallback "A gift
 1. BackButton + "Your gift from Quynh"
 2. Item card: image 168px (AlsoLikedTag "{Giver} also liked" if swapped); title 17/650; "From {seller}" (not "Handmade by" — the catalog can't verify that); WhyCard "Why {Giver} picked this"
 3. One card per option group from `get_product` (hidden if the product has none), e.g. "Size", "Color": SizePills; values with `exists: false` are not rendered, `available: false` renders sold out (disabled). Picking a value re-resolves the variant with `selected`; a spinner shows in the card header while stock is checked. Before options load: "Checking what's in stock…"
-4. Card "Where should it go?": street; row city / state / ZIP; lock icon + "Your address goes only to the shop."
+4. Card "Where should it go?": street; row city / state / ZIP; lock icon + "Your address is saved for this gift and shared with the giver to finish checkout."
 5. Footer: Primary "Love it — send it to me" → confirm; TextLinkButton "Not quite right? See {n} others {Giver} picked" (hidden if one-of-a-kind)
 
 Validation: address required (inline error under field, 13px, clay). Variant required if options exist ("Pick one of each option."); a sold-out combination blocks with "That combination is sold out — try another."
@@ -184,7 +185,7 @@ Validation: address required (inline error under field, 13px, clay). Variant req
 BottomSheet over screen 4 (blurred). Title "{Giver} also liked these", subtitle "Pick whichever feels most like you. The note comes with it." OptionRows: the original pick first (labelled "{Giver}'s pick"), then approved alternatives; the current row is labelled "Selected". Selecting a row closes the sheet, swaps the item, resets variant selection, keeps address.
 
 ### 5 · Recipient — All set (`/g/[id]/done`)
-Centered: 88px success-tint circle with green check; Display "You're all set"; body "Quynh will finish sending it. You'll get the tracking link from the shop." Summary card (thumb, "{title} · {variant}", seller, "To {street}, {city}"). Clay pill "Quynh's note travels with your gift". Footer caption "You can close this page."
+Centered: 88px success-tint circle with green check; Display "You're all set"; body "{Giver} will be notified to finish sending it. Your choice is saved." Summary card (thumb, "{title} · {variant}", seller, "To {street}, {city}"). Clay pill "Quynh's note travels with your gift". Footer caption "You can close this page."
 
 ### 6 · Giver — She chose (`/gift/[id]`)
 M4 implementation notes: waiting status refreshes every 10 seconds while visible. Checkout re-fetches the exact variant using saved option selections, checks USD price and explicit availability, and repeats the check on click-through. A changed price requires a fresh acceptance. Missing stock, price, variant, or HTTPS checkout URL blocks checkout with a retry. Shipping/tax and final total are calculated by the merchant; only the item subtotal is shown here. Delivery is labelled “5–8 business days · Prototype estimate”. “Completed” means merchant checkout was opened, explicitly labelled as a prototype status with payment unverified. Reopening clears the confirmation and reuses the same recipient link; choosing an alternative yourself reuses the option form and preserves the address in the current session. No message is sent automatically. Shop Pay availability is not claimed without merchant evidence.

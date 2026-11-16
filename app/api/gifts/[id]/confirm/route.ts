@@ -1,6 +1,8 @@
 // Recipient confirms (BRIEF §3 R1): chosen product (pick or an approved swap), variant, address.
 // Idempotent: a second call returns the stored confirmation unchanged.
 import { getGift, saveGift } from "@/lib/store";
+import { queueConfirmation } from "@/lib/notifications";
+import { put, take } from "@/lib/private-store";
 import type { Address } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +15,10 @@ export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/conf
   const { id } = await ctx.params;
   const gift = await getGift(id);
   if (!gift) return Response.json({ error: "Not found" }, { status: 404 });
-  if (gift.confirmation) return Response.json({ ok: true, alreadyConfirmed: true, confirmation: gift.confirmation });
+  if (gift.confirmation) {
+    await queueConfirmation(gift).catch(() => console.error("[notification] Could not queue; confirmation is saved."));
+    return Response.json({ ok: true, alreadyConfirmed: true, confirmation: gift.confirmation });
+  }
 
   let body: Body;
   try {
@@ -41,9 +46,17 @@ export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/conf
     return Response.json({ error: "A complete US address is required" }, { status: 400 });
   }
 
-  gift.confirmation = { chosenProductId, variantId, selected: body.selected, variantTitle: clean(body.variantTitle) || "Default", address, confirmedAt: new Date().toISOString() };
-  gift.status = "confirmed";
-  await saveGift(gift);
+  const lock = `confirm-lock:${id}`;
+  if (!await put(lock, true, 60, true)) return Response.json({ error: "Confirmation is already being saved. Please retry." }, { status: 409 });
+  let saved;
+  try {
+    const current = await getGift(id);
+    if (!current) return Response.json({ error: "Not found" }, { status: 404 });
+    if (current.confirmation) return Response.json({ ok: true, alreadyConfirmed: true, confirmation: current.confirmation });
+    saved = { ...current, status: "confirmed" as const, confirmation: { chosenProductId, variantId, selected: body.selected, variantTitle: clean(body.variantTitle) || "Default", address, confirmedAt: new Date().toISOString() } };
+    await saveGift(saved);
+  } finally { await take(lock); }
+  await queueConfirmation(saved).catch(() => console.error("[notification] Could not queue; confirmation is saved."));
   console.log(`[api/gifts/${id}/confirm] ${chosenProductId === gift.pick.id ? "kept the pick" : "chose an alternative"} · variant ${variantId} · ${address.city}, ${address.region}`);
-  return Response.json({ ok: true, confirmation: gift.confirmation });
+  return Response.json({ ok: true, confirmation: saved.confirmation });
 }
