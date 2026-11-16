@@ -164,7 +164,7 @@ Filters shown as read-only chips under the photo card. Centered empty state: 64p
 5. NoteField: label "What made you think of them?", helper "They read this first. It stays with the gift even if they choose another." Required.
 6. Sticky footer: row [Secondary "Preview" (1/3)] [Primary "Create gift link" (2/3)] + caption "Nothing is charged until they confirm." Both disabled until who + note are filled and the swap check has settled. Preview creates the gift (once) and opens `/g/[id]` in a new tab.
 
-After create: the footer becomes a card "Your gift link" with the URL in a read-only input, a Copy button ("Copied" for ~2s), and "Send it however you like — text, email, a sticky note. Track it here." (→ `/gift/[id]`). Who/note lock.
+After create: the footer becomes a card "Your gift link" with the URL in a read-only input, a Copy button ("Copied" for ~2s), platform actions for Text, Gmail, Instagram, and More, and a Track link (→ `/gift/[id]`). Text/Gmail open compose surfaces; Instagram copies the link and opens the DM inbox. Nothing sends automatically. Who/note lock.
 
 ### 3 · Recipient — Reveal (`/g/[id]`)
 Gift theme. AppHeader ("No account needed"). Centered: 112px clay-tint circle with clay gift icon; "Quynh sent you something" (14/550 text2); Display "For your new place"; NoteQuote. Footer: Primary "Open your gift" + caption "You'll confirm a few details. About 30 seconds."

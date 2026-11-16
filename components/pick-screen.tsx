@@ -6,7 +6,7 @@ import { formatCents } from "@/lib/catalog";
 import type { ProductSnapshot } from "@/lib/types";
 import { SwapMiniCard } from "./swap-mini-card";
 import {
-  BackButton, Card, CheckIcon, CreditFooter, Field, PrimaryButton, Screen, SecondaryButton, Spinner,
+  BackButton, Card, CheckIcon, CreditFooter, Field, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
   TextLinkButton, inputCls,
 } from "./ui";
 
@@ -30,6 +30,7 @@ export function PickScreen({ productId }: { productId: string }) {
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ id: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
   const swapReq = useRef(0);
 
   // 1. Context: sessionStorage first, else get_product.
@@ -107,10 +108,56 @@ export function PickScreen({ productId }: { productId: string }) {
     }
   };
 
-  const copy = async () => {
+  const copy = async (): Promise<boolean> => {
+    if (!created) return false;
+    try {
+      await navigator.clipboard.writeText(created.url);
+      setCopied(true);
+      setShareNotice(null);
+      setTimeout(() => setCopied(false), 1800);
+      return true;
+    } catch {
+      // Clipboard blocked: the link remains selectable in the read-only input.
+      return false;
+    }
+  };
+
+  const shareText = created ? `I picked something for you. Open your gift: ${created.url}` : "";
+
+  const sendVia = async (channel: "text" | "gmail" | "instagram" | "more") => {
     if (!created) return;
-    try { await navigator.clipboard.writeText(created.url); setCopied(true); setTimeout(() => setCopied(false), 1800); }
-    catch { /* clipboard blocked: the link is selectable text */ }
+    if (channel === "more") {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "A gift for you", text: "I picked something for you.", url: created.url });
+          return;
+        } catch (error) {
+          if ((error as DOMException).name === "AbortError") return;
+        }
+      }
+      await copy();
+      setShareNotice("Link copied — paste it wherever you like.");
+      return;
+    }
+
+    if (channel === "instagram") {
+      const popup = window.open("https://www.instagram.com/direct/inbox/", "_blank", "noopener,noreferrer");
+      const copiedLink = await copy();
+      if (!popup) window.location.href = "https://www.instagram.com/direct/inbox/";
+      setShareNotice(copiedLink ? "Link copied — paste it into your Instagram message." : "Copy the link above, then paste it into Instagram.");
+      return;
+    }
+
+    if (channel === "text") {
+      window.location.href = `sms:?&body=${encodeURIComponent(shareText)}`;
+      return;
+    }
+
+    window.open(
+      `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent("A gift for you")}&body=${encodeURIComponent(shareText)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   };
 
   const preview = async () => {
@@ -224,8 +271,27 @@ export function PickScreen({ productId }: { productId: string }) {
                 className={`${inputCls} tabular flex-1 text-[13px]`} />
               <SecondaryButton onClick={copy} className="!h-10 !w-auto shrink-0 px-3 text-[13px]">{copied ? "Copied" : "Copy"}</SecondaryButton>
             </div>
+            <div className="grid grid-cols-4 gap-2" aria-label="Send gift link">
+              <SecondaryButton onClick={() => void sendVia("text")} className="!h-11 !flex-col !gap-0.5 !px-1 !text-[12px]">
+                <MessageIcon />
+                <span>Text</span>
+              </SecondaryButton>
+              <SecondaryButton onClick={() => void sendVia("gmail")} className="!h-11 !flex-col !gap-0.5 !px-1 !text-[12px]">
+                <MailIcon />
+                <span>Gmail</span>
+              </SecondaryButton>
+              <SecondaryButton onClick={() => void sendVia("instagram")} className="!h-11 !flex-col !gap-0.5 !px-1 !text-[12px]">
+                <InstagramIcon />
+                <span>Instagram</span>
+              </SecondaryButton>
+              <SecondaryButton onClick={() => void sendVia("more")} className="!h-11 !flex-col !gap-0.5 !px-1 !text-[12px]">
+                <ShareIcon />
+                <span>More</span>
+              </SecondaryButton>
+            </div>
+            {shareNotice && <p className="text-[12px] text-giver-text2" role="status">{shareNotice}</p>}
             <p className="text-[12px] text-giver-text2">
-              Send it however you like — text, email, a sticky note. <a href={`/gift/${created.id}`} className="underline underline-offset-[3px]">Track it here</a>.
+              Nothing sends automatically. <a href={`/gift/${created.id}`} className="underline underline-offset-[3px]">Track it here</a>.
             </p>
           </Card>
         ) : (
