@@ -1,8 +1,12 @@
 # Giver email and private tracking
 
-Givers verify their email with a single-use, 15-minute link. The confirmation button consumes the link via POST so email link scanners do not consume it by visiting. Verification creates a random, HttpOnly, SameSite=Lax cookie session for 30 days. Only hashes of login/session tokens are stored. No password is collected.
+Givers create and share a gift immediately without entering contact details. Creation issues a separate random, HttpOnly, SameSite=Lax browser cookie for 30 days. Its hash identifies the browser's private gifts; the recipient URL never grants giver access. Clearing cookies or switching devices loses this browser access unless an email has been verified. Production cookies are Secure; local memory still resets on restart.
 
-Verify in the email tab, then return to the original creation tab: it detects the session and enables Create gift link. `/gifts` lists the verified email's gifts. A recipient still needs no account. New gift links use 24 random characters. Giver pages, full gift responses, checkout, and reopening require ownership. Recipient serialization explicitly excludes ownership fields.
+After creation the share screen offers “Get notified when they choose · optional.” Email verification uses a single-use, 15-minute link and does not block sharing or tracking. Only the creating browser can request a link that attaches an email to that gift. The claim is stored server-side with the email token, so the verification link may be opened on another device. A recipient URL or another browser cannot claim the gift. A gift's existing verified email cannot be replaced by a different one through this flow.
+
+The confirmation button consumes the email link via POST so link scanners do not consume it by visiting. Verification creates a separate random, HttpOnly cookie session for 30 days and enables notifications and recovery. If the recipient already confirmed, verification queues the missed notification. Requests and delivery failures leave the saved gift and browser access intact. Gifts created while already signed in retain that verified email automatically.
+
+`/gifts` lists gifts owned by this browser and/or verified email. Recipients still need no account. New gift links use 24 random characters. Giver pages, full gift responses, checkout, and reopening require ownership. Recipient serialization excludes both email and browser ownership fields. Signing out revokes both email and browser sessions on that device.
 
 Existing gifts created before this change have no verified owner and cannot be claimed from their recipient links. Create new gifts for the demo. Local memory still resets on restart. Production requires Upstash Redis; gift records expire 30 days after their most recent save.
 
@@ -26,4 +30,4 @@ Schedule `GET /api/jobs/notifications` every 5–10 minutes with `Authorization:
 
 Notification email contains a private tracking URL, no address or price. Opening that URL on a new device requires email verification. Givers can request a new login email at `/giver` to recover access to all retained gifts. SMS notifications are deferred; Text in the share card still opens a manually sent message.
 
-The prototype saves the address and makes it available to the verified giver for merchant checkout. Recipient copy now states this accurately instead of claiming that only the shop receives it.
+The prototype saves the address and makes it available to the authorized giver for merchant checkout. Recipient copy states this accurately instead of claiming that only the shop receives it.

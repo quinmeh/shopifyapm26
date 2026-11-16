@@ -1,6 +1,6 @@
 // Create a gift (BRIEF §3 G3). Returns { id } for the /g/[id] link.
 import { nanoid } from "nanoid";
-import { digest, giverEmail, sameOrigin } from "@/lib/giver-auth";
+import { digest, ensureGiverBrowser, giverEmail, sameOrigin } from "@/lib/giver-auth";
 import { addMember } from "@/lib/private-store";
 import { saveGift } from "@/lib/store";
 import type { Gift, ProductSnapshot } from "@/lib/types";
@@ -22,7 +22,6 @@ const isSnapshot = (p: unknown): p is ProductSnapshot =>
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return new Response("Invalid origin", { status: 403 });
   const ownerEmail = await giverEmail();
-  if (!ownerEmail) return Response.json({ error: "Verify your email before creating a gift." }, { status: 401 });
   let body: Body;
   try {
     body = (await req.json()) as Body;
@@ -30,6 +29,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  if (!body || typeof body !== "object") return Response.json({ error: "Invalid request" }, { status: 400 });
   const note = (body.note ?? "").trim();
   const recipientLabel = (body.recipientLabel ?? "").trim();
   if (!isSnapshot(body.pick)) return Response.json({ error: "pick required" }, { status: 400 });
@@ -39,7 +39,8 @@ export async function POST(req: Request) {
 
   const gift: Gift = {
     id: nanoid(24),
-    ownerEmail,
+    ownerEmail: ownerEmail ?? undefined,
+    ownerBrowserId: await ensureGiverBrowser(),
     createdAt: new Date().toISOString(),
     giverName: process.env.NEXT_PUBLIC_GIVER_NAME || "Your friend",
     recipientLabel,
@@ -50,7 +51,8 @@ export async function POST(req: Request) {
     status: "sent",
   };
   await saveGift(gift);
-  await addMember(`giver-gifts:${digest(ownerEmail)}`, gift.id);
+  await addMember(`browser-gifts:${gift.ownerBrowserId}`, gift.id);
+  if (ownerEmail) await addMember(`giver-gifts:${digest(ownerEmail)}`, gift.id);
   console.log(`[api/gifts] created ${gift.id}: "${gift.pick.title}" + ${approvedSwaps.length} swaps for ${recipientLabel}`);
   return Response.json({ id: gift.id }, { status: 201 });
 }

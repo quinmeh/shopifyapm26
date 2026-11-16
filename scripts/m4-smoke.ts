@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 
 const base = "http://127.0.0.1:3000";
-// Supply a verified giver session cookie; email-smoke.ts covers creating one locally.
-const cookie = process.env.GIVER_SESSION_COOKIE ?? "";
+// Creation issues browser access immediately; an existing session is optional.
+let cookie = process.env.GIVER_SESSION_COOKIE ?? "";
 const origin = process.env.APP_URL ?? "http://localhost:3000";
 const get = (path: string) => fetch(base + path, { headers: { Cookie: cookie } });
 async function post(path: string, body: unknown = {}) {
   return fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json", Cookie: cookie, Origin: origin }, body: JSON.stringify(body) });
 }
 async function main() {
-  assert.ok(cookie, "Set GIVER_SESSION_COOKIE to a verified local giver session before running M4 smoke tests.");
   const created = await post("/api/gifts", { recipientLabel: "your test recipient", note: "M4 smoke test", pick: { id: "gid://shopify/p/m4-test", title: "Test item", shortName: "the test item", priceCents: 4000 } });
   assert.equal(created.status, 201);
+  const browserCookie = created.headers.get("set-cookie")?.split(";")[0];
+  if (browserCookie) cookie = [cookie, browserCookie].filter(Boolean).join("; ");
   const { id } = await created.json();
   const page = await get(`/gift/${id}`);
   assert.equal(page.status, 200);

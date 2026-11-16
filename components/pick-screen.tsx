@@ -27,7 +27,6 @@ export function PickScreen({ productId }: { productId: string }) {
   const [swaps, setSwaps] = useState<SwapState>({ status: "loading", items: [], removed: [] });
   const [recipientLabel, setRecipientLabel] = useState("");
   const [note, setNote] = useState("");
-  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ id: string; url: string } | null>(null);
@@ -84,7 +83,7 @@ export function PickScreen({ productId }: { productId: string }) {
 
   const approved = swaps.items.filter((s) => !swaps.removed.includes(s.id));
   const oneOfAKind = swaps.status === "ready" && approved.length === 0;
-  const canCreate = !!ctx && !!verifiedEmail && swaps.status !== "loading" && note.trim().length > 0 && recipientLabel.trim().length > 0 && !creating;
+  const canCreate = !!ctx && swaps.status !== "loading" && note.trim().length > 0 && recipientLabel.trim().length > 0 && !creating;
 
   const create = async (): Promise<string | null> => {
     if (created) return created.id;
@@ -183,7 +182,7 @@ export function PickScreen({ productId }: { productId: string }) {
   return (
     <Screen theme="giver">
       <Header />
-      <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
+      {!created && <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
         {/* Pick card */}
         <Card className="flex gap-3 p-3">
           <div className="h-[116px] w-[116px] shrink-0 overflow-hidden rounded-control bg-skeleton">
@@ -245,7 +244,6 @@ export function PickScreen({ productId }: { productId: string }) {
           )}
         </Card>
 
-        {!created && <GiverEmail onVerified={setVerifiedEmail} />}
         {/* Who + note */}
         <Field label="Who’s it for?" htmlFor="who">
           <input id="who" className={inputCls} value={recipientLabel} onChange={(e) => setRecipientLabel(e.target.value)}
@@ -258,9 +256,10 @@ export function PickScreen({ productId }: { productId: string }) {
             placeholder="Your new place deserves a proper view, even on grey days." />
           <p className="text-[12px] text-giver-text2">They read this first. It stays with the gift even if they choose another.</p>
         </div>
-      </main>
+      </main>}
 
-      <footer className="sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
+      <section aria-label={created ? "Share your gift" : "Create your gift"} className={created ? "flex flex-1 flex-col gap-3 px-5 pb-4" : "sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3"}>
+        {created && <h1 className="text-[24px] font-bold leading-[30px]">Your gift is ready to share</h1>}
         {created ? (
           <Card className="flex flex-col gap-2 p-3">
             <span className="text-[13px] font-[650]">Your gift link</span>
@@ -300,8 +299,9 @@ export function PickScreen({ productId }: { productId: string }) {
             <p className="pt-2 text-center text-[12px] text-giver-text2">{createError ?? "Nothing is charged until they confirm."}</p>
           </>
         )}
+        {created && <GiverEmail giftId={created.id} />}
         <CreditFooter />
-      </footer>
+      </section>
     </Screen>
   );
 }

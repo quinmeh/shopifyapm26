@@ -15,7 +15,7 @@ export function DoneScreen({ gift }: { gift: RecipientGift }) {
         <span className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-success-tint text-success"><CheckIcon size={40} /></span>
         <div>
           <h1 className="text-[30px] font-bold leading-9 tracking-[-0.4px] text-gift-text">You’re all set</h1>
-          <p className="pt-2 text-[14px] leading-5 text-gift-text2">{gift.giverName} will be notified to finish sending it. Your choice is saved.</p>
+          <p className="pt-2 text-[14px] leading-5 text-gift-text2">Your choice is saved. {gift.giverName} can now finish sending it.</p>
         </div>
         <GiftCard className="flex w-full items-center gap-3 p-3 text-left">
           <span className="h-14 w-14 shrink-0 overflow-hidden rounded-control bg-skeleton">

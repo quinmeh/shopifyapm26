@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GiverEmail } from "./giver-email";
 import { useCallback, useEffect, useState } from "react";
 import type { Gift } from "@/lib/types";
 import type { CheckoutCheck } from "@/lib/checkout";
@@ -139,6 +140,7 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
           {["You chose the thought", "They confirmed the details", gift.status === "completed" ? "Merchant checkout opened" : "You finish the purchase"].map((step, i) => <li key={step} className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${i < 2 ? "bg-success" : "border-2 border-ink"}`} />{step}</li>)}
         </ol></Card>
       </>}
+      <GiverEmail giftId={gift.id} />
       {notice && <p role="status" className="text-[13px] text-giver-text2">{notice}</p>}
       {error && <Card className="p-3.5"><p role="alert" className="text-[13px]">{error}</p>{c && <TextLinkButton onClick={() => void recheck()}>Try the check again</TextLinkButton>}</Card>}
     </main>

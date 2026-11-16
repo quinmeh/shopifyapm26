@@ -55,7 +55,7 @@ Differentiator: recipient confirm-or-choose **across every merchant in Shopify C
 Payments, SMS notification sending, multiple recipients, reminders, auto-ship fallback,
 thank-you reply, wishlists, real UCP `create_checkout` (needs signed/token tier; anonymous profiles get no checkout tools).
 
-User-approved extension: passwordless giver email verification, private `/gifts` tracking, and email notifications on recipient confirmation. Recipients remain account-free. See `EMAIL.md` for delivery configuration and local preview.
+User-approved extension: create and share first, with immediate private browser tracking. Optional passwordless giver email verification afterward enables `/gifts` recovery on other devices and confirmation notifications. Recipients remain account-free. See `EMAIL.md` for delivery configuration and local preview.
 
 ## 4. Stack
 
