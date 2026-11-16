@@ -128,22 +128,23 @@ Each step: header row (AppHeader brand on step 1, BackButton after) with **Progr
 No search runs during setup. "Find gifts" starts the photo read and the visual search in parallel and shows 1·4.
 
 ### 1·4 · Giver — Reading the photo (`/`, transitional)
-Centered: 96px photo thumbnail; H1 "Reading the photo" (no photo: "Finding gifts"; both become "Got it" when done). Then a list of **ReadStep** rows (white card, 24px status circle: spinner while working, green check when done, grey dash on failure), appearing one after another (180ms stagger):
-1. "Looking at the photo" → becomes the one-line taste read when the read returns (or "Photo read is off — matching on the photo itself")
-2. One row per detected cue: "Found: tuxedo cat"
-3. "Searching independent makers" → "6 gifts from 5 makers" (or "No in-stock matches yet" / "Couldn't reach the catalog")
-Caption "About ten seconds." Auto-advances to 1c ~1s after both the read and the search settle. No buttons.
+Centered: 96px photo thumbnail; H1 "Finding gifts" → "Got it" when done. Then a list of **ReadStep** rows (white card, 24px status circle: spinner while working, green check when done, grey dash on failure), appearing one after another (180ms stagger):
+1. (if occasion) "Thinking about the occasion" → the profile's read, e.g. "A new place: something cozy, useful, or for the walls."
+2. (if photo) "Looking at the photo" → "The photo points to space needle and seattle skyline" (or "The photo didn't point to a clear theme")
+3. One row per cue: "Found: space needle"
+4. "Searching independent makers" → "6 gifts from 5 makers" (or "No in-stock matches yet" / "Couldn't reach the catalog")
+Caption "About ten seconds." Auto-advances to 1c ~1s after the photo read and the grid search settle. No buttons.
 
 ### 1c · Giver — Her matches (`/`)
 1. BackButton (→ 1·3) + "Matches" + Prototype chip
 2. PhotoInputCard (Change re-reads and re-searches in place)
-3. **AnalysisCard** (photo only): title "What the photo says"; one-sentence taste read (text2); CueChips row: "Everything in the photo" (selected by default) + 3–5 detected cues ("tuxedo cat", "stack of paperbacks"). Loading: title "Reading the photo…" + two skeleton lines + three skeleton chips. Unavailable (no key / error): one line in text2, e.g. "Photo read is off — add ANTHROPIC_API_KEY to turn it on." Matches still show.
-4. Budget | Ships to row (changes re-search immediately)
-5. Section row: "Matches their taste" + right "6 gifts · 5 makers". With a cue selected: "Gifts for the {cue}". Loading: "Finding gifts that match the photo…" / "Finding gifts for the {cue}…"
+3. **AnalysisCard** (photo only): title "From the photo"; one line (text2) "The photo points to space needle and seattle skyline." (with Claude: its taste read); CueChips row: **"For the occasion"** (selected by default when an occasion was given) · **"Looks like the photo"** · one chip per cue. Loading: title "Reading the photo…" + skeleton line + three skeleton chips. No clear theme: "The photo didn't point to a clear theme, so the occasion leads." — the two fixed chips still show.
+4. Budget | Ships to row (changes re-search the current view immediately)
+5. Section row: "Matches the occasion" / "Looks like the photo" / "Gifts for the {cue}" + right "6 gifts · 5 makers". Loading: "Finding gifts for the occasion…" etc.
 6. 2-column grid of ProductTiles — **the only region that scrolls**. The screen is locked to the viewport; 1–5 and the footer stay fixed.
 7. Footer: PrimaryButton "Choose {short name}" (or disabled "Choose a gift") + CreditFooter
 
-Behavior: "Everything in the photo" = pure visual search (no text — text overrides the image signal). A cue chip = text search on that cue's query. Selecting a tile updates the button label. See 1a/1b for reload and empty.
+Behavior: "For the occasion" = the occasion profile's themed searches interleaved (the default grid). "Looks like the photo" = pure visual search (no text — text overrides the image signal; cached from the reading step). A cue chip = `"{cue} {occasion cue suffix}"`, e.g. "seattle skyline home decor". Selecting a tile updates the button label. See 1a/1b for reload and empty.
 
 **CueChip**: 36px tall pill, 13/500. Default white + `giver-input-border`; selected ink bg, white text, leading check icon. `aria-pressed`.
 

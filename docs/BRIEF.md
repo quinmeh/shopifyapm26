@@ -40,9 +40,9 @@ Differentiator: recipient confirm-or-choose **across every merchant in Shopify C
 ## 3. Scope
 
 **Build with real API calls**
-- Photo cues → derived from the catalog: `/api/search` in photo mode fetches 18 visual matches, counts the themes their titles share (`lib/cues.ts`), and returns the top 6 products plus 2–5 cues ("The matches point to cat, window and book"). No AI, no key. Cues are tappable themed searches.
+- **The occasion leads the search.** `lib/occasions.ts` maps the occasion text to a profile (home, couple, baby, birthday, thanks, milestone, comfort, general): 3–4 catalog text queries that tested well, a one-line read, and a cue suffix. `/api/search` occasion mode runs them and interleaves the results (candles, plants, throws for "first apartment" — not Space Needle souvenirs).
+- **The photo adds flavor.** Photo mode is a pure visual `search_catalog` (verified: any `query` sent with an image overrides the visual signal). Its 18 matches feed `lib/cues.ts`, which counts themes shared across ≥2 makers ("The photo points to space needle and seattle skyline"). Cues are chips: tapping one searches `"{cue} {profile.cueSuffix}"` ("seattle skyline home decor" → prints and tiles). "Looks like the photo" shows the visual matches themselves.
 - Optional upgrade: with `ANTHROPIC_API_KEY` set, `POST /api/analyze` reads the photo itself with Claude vision and its cues replace the catalog-derived ones.
-- Photo search (+ text fallback) → `search_catalog`. Verified: any `query` sent with an image overrides the visual signal, so photo search is pure visual; cues and the no-photo path are text searches.
 - Swap check on the pick → `search_catalog` with `like: [{id}]`
 - Recipient variant options → `get_product`
 - Re-check before checkout → `get_product`, then open variant `checkout_url`

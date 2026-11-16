@@ -4,7 +4,8 @@
 // ("space needle" over "space" + "needle"). Honest framing: these describe the matches,
 // not the photo — see DESIGN.md §4 screen 1·4.
 
-export type Cue = { label: string; query: string };
+// The label is what a tap sends; /api/search blends it with the occasion's gift vocabulary.
+export type Cue = { label: string; query?: string };
 
 const STOP = new Set(
   `the a an and or for with of in on to from by your her his my our this that is it at as be
@@ -84,9 +85,7 @@ export function cuesFromTitles(items: { title: string; seller?: string }[], max 
 
   const list = labels.length === 2 ? labels.join(" and ") : `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
   return {
-    read: `The matches point to ${list}.`,
-    // "{label} gift" tested best: keeps proper nouns intact ("space needle gift" → souvenirs)
-    // and turns common nouns into gifts for the person ("cat gift" → cat-lover mug, not a cat bed).
-    cues: labels.map((label) => ({ label, query: `${label} gift` })),
+    read: `The photo points to ${list}.`,
+    cues: labels.map((label) => ({ label })),
   };
 }

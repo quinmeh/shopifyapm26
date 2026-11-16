@@ -1,13 +1,20 @@
 import { searchCatalog, type SearchArgs } from "@/lib/catalog";
 import { cuesFromTitles } from "@/lib/cues";
+import { occasionProfile } from "@/lib/occasions";
 import { toSnapshot } from "@/lib/snapshot";
+import type { ProductSnapshot } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+// Three modes (BRIEF §3). The occasion leads; the photo adds flavor.
+//   occasion — merge the occasion profile's themed text queries (default)
+//   photo    — pure visual search on the image; also derives the photo cues
+//   cue      — a tapped cue blended with the occasion ("seattle skyline home decor")
 type Body = {
+  mode?: "occasion" | "photo";
+  cue?: string; // cue label
   photo?: { contentType: string; data: string }; // base64, ≤1024px JPEG from the client
   occasion?: string;
-  cue?: string; // a cue's search query from /api/analyze (tapped chip)
   budget?: { min: number; max: number }; // cents
   region?: string; // "WA" or omitted for anywhere in the US
 };
@@ -28,6 +35,20 @@ function diversify<T extends { sellerName?: string }>(items: T[], n: number): T[
     if (out.length === n) return out;
   }
   return [...out, ...skipped].slice(0, n);
+}
+
+// Interleave several result lists (theme A #1, theme B #1, …) so the grid spans themes.
+function interleave(lists: ProductSnapshot[][]): ProductSnapshot[] {
+  const out: ProductSnapshot[] = [];
+  const seen = new Set<string>();
+  const longest = Math.max(0, ...lists.map((l) => l.length));
+  for (let i = 0; i < longest; i++) {
+    for (const l of lists) {
+      const p = l[i];
+      if (p && !seen.has(p.id)) { seen.add(p.id); out.push(p); }
+    }
+  }
+  return out;
 }
 
 export async function POST(req: Request) {
@@ -52,33 +73,48 @@ export async function POST(req: Request) {
     price: { min, max },
   };
 
-  // Verified in M0: any `query` sent alongside an image overrides the visual
-  // signal entirely, so a photo search is pure visual. Text is the fallback.
   const occasion = (body.occasion ?? "").trim();
-  const context = {
-    ...CONTEXT,
-    ...(occasion ? { intent: `buying a gift for ${occasion}` } : {}),
-  };
-  // A cue (from /api/analyze) is a themed text search; it replaces the photo for that request.
+  const profile = occasionProfile(occasion);
   const cue = (body.cue ?? "").trim();
-  const args: SearchArgs = cue
-    ? { query: cue }
-    : body.photo?.data
-      ? { like: [{ image: { content_type: body.photo.contentType || "image/jpeg", data: body.photo.data } }] }
-      : { query: occasion ? `housewarming gift — ${occasion}` : "housewarming gift" };
-
-  const mode = cue ? "cue" : body.photo?.data ? "photo" : "text";
-  // Photo mode fetches a wider net so the cue extraction has enough titles to find themes.
-  const limit = mode === "photo" ? 18 : 6;
+  const hasPhoto = !!body.photo?.data;
+  const mode = cue ? "cue" : body.mode === "photo" && hasPhoto ? "photo" : "occasion";
 
   try {
-    const result = await searchCatalog({ ...args, context, filters, pagination: { limit } });
-    const all = result.products.map(toSnapshot);
-    const products = diversify(all, 6);
+    if (mode === "occasion") {
+      // One call per theme, sequential (the client serializes for the 5 req/s limit).
+      const lists: ProductSnapshot[][] = [];
+      for (const query of profile.queries) {
+        const r = await searchCatalog({ query, context: CONTEXT, filters, pagination: { limit: 5 } });
+        lists.push(r.products.map(toSnapshot));
+      }
+      const products = diversify(interleave(lists), 6);
+      const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
+      console.log(`[api/search] occasion(${profile.key}) ← ${products.length} from ${lists.length} themes`);
+      return Response.json({ products, makers, mode, occasion: { key: profile.key, read: profile.read } });
+    }
+
+    if (mode === "photo") {
+      // Verified in M0: any `query` sent alongside an image overrides the visual signal
+      // entirely, so this is pure visual. A wider net so the cue extraction finds themes.
+      const r = await searchCatalog({
+        like: [{ image: { content_type: body.photo!.contentType || "image/jpeg", data: body.photo!.data } }],
+        context: CONTEXT, filters, pagination: { limit: 18 },
+      });
+      const all = r.products.map(toSnapshot);
+      const products = diversify(all, 6);
+      const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
+      const derived = cuesFromTitles(all.map((p) => ({ title: p.title, seller: p.sellerName })));
+      console.log(`[api/search] photo cues ← ${derived.cues.map((c) => c.label).join(", ") || "(none)"}`);
+      return Response.json({ products, makers, mode, read: derived.read, cues: derived.cues });
+    }
+
+    // cue: blend the photo cue with the occasion's gift vocabulary.
+    const query = `${cue} ${profile.cueSuffix}`;
+    const r = await searchCatalog({ query, context: CONTEXT, filters, pagination: { limit: 8 } });
+    const products = diversify(r.products.map(toSnapshot), 6);
     const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
-    const derived = mode === "photo" ? cuesFromTitles(all.map((p) => ({ title: p.title, seller: p.sellerName }))) : null;
-    if (derived) console.log(`[api/search] catalog cues ← ${derived.cues.map((c) => c.label).join(", ") || "(none)"}`);
-    return Response.json({ products, makers, mode, ...(derived ? { read: derived.read, cues: derived.cues } : {}) });
+    console.log(`[api/search] cue "${query}" ← ${products.length}`);
+    return Response.json({ products, makers, mode, query });
   } catch (e) {
     console.error("[api/search] failed:", (e as Error).message);
     return Response.json({ error: "Search failed. Try again." }, { status: 502 });
