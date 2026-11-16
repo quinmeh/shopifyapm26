@@ -160,11 +160,6 @@ export function PickScreen({ productId }: { productId: string }) {
     );
   };
 
-  const preview = async () => {
-    const id = await create();
-    if (id) window.open(`/g/${id}`, "_blank", "noopener");
-  };
-
   // ---------------- render ----------------
   if (loadError) {
     return (
@@ -296,12 +291,9 @@ export function PickScreen({ productId }: { productId: string }) {
           </Card>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2">
-              <SecondaryButton onClick={() => void preview()} disabled={!canCreate} className="col-span-1 !h-12">Preview</SecondaryButton>
-              <PrimaryButton onClick={() => void create()} disabled={!canCreate} className="col-span-2">
-                {creating ? "Creating…" : "Create gift link"}
-              </PrimaryButton>
-            </div>
+            <PrimaryButton onClick={() => void create()} disabled={!canCreate}>
+              {creating ? "Creating…" : "Create gift link"}
+            </PrimaryButton>
             <p className="pt-2 text-center text-[12px] text-giver-text2">{createError ?? "Nothing is charged until they confirm."}</p>
           </>
         )}

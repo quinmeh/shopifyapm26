@@ -162,7 +162,7 @@ Filters shown as read-only chips under the photo card. Centered empty state: 64p
 3. Card: title "If it's not quite them, they can choose one of these" + helper "Similar, within ${min}–${max}, other makers first. Remove any you wouldn't give." (the swap check prefers other makers but falls back to the same maker when short) + up to 3 SwapMiniCards (loading: spinner line "Checking the catalog for look-alikes…"). All removed / none returned → note "One of a kind. They can confirm details and address, but there's nothing to swap to."
 4. "Who's it for?" input (placeholder "your sister, a close friend, your dad…") — fills `recipientLabel`, which Screen 6 renders ("Your sister chose…"). Required.
 5. NoteField: label "What made you think of them?", helper "They read this first. It stays with the gift even if they choose another." Required.
-6. Sticky footer: row [Secondary "Preview" (1/3)] [Primary "Create gift link" (2/3)] + caption "Nothing is charged until they confirm." Both disabled until who + note are filled and the swap check has settled. Preview creates the gift (once) and opens `/g/[id]` in a new tab.
+6. Sticky footer: Primary "Create gift link" + caption "Nothing is charged until they confirm." Disabled until who + note are filled and the swap check has settled. The generated link card can be opened after creation.
 
 After create: the footer becomes a card "Your gift link" with the URL in a read-only input, a Copy button ("Copied" for ~2s), platform actions for Text, Gmail, Instagram, and More, and a Track link (→ `/gift/[id]`). Text/Gmail open compose surfaces; Instagram copies the link and opens the DM inbox. Nothing sends automatically. Who/note lock.
 
