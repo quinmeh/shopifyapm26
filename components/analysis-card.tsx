@@ -3,13 +3,11 @@
 import { CheckIcon } from "./ui";
 
 export type Cue = { label: string; query: string };
-export type AnalysisResult = { read: string | null; cues: Cue[]; unavailable?: string };
+// source: "claude" = read the photo itself (needs ANTHROPIC_API_KEY); "catalog" = themes the visual matches share.
+export type AnalysisResult = { read: string | null; cues: Cue[]; source?: "claude" | "catalog"; unavailable?: string };
 
 const UNAVAILABLE_COPY: Record<string, string> = {
-  no_key: "Photo read is off — add ANTHROPIC_API_KEY to turn it on.",
-  bad_key: "Photo read is off — the ANTHROPIC_API_KEY was rejected.",
-  rate_limited: "Photo read is busy right now. Matches below still come from the photo.",
-  refused: "Couldn’t read this photo. Matches below still come from the photo.",
+  thin: "The matches were too varied to name a theme. Tap any tile below.",
   error: "Couldn’t read this photo. Matches below still come from the photo.",
 };
 
@@ -26,7 +24,9 @@ export function AnalysisCard({
 }) {
   return (
     <section className="rounded-card border border-giver-border bg-surface p-3.5" aria-busy={loading}>
-      <h2 className="text-[14px] font-[650] leading-5">{loading ? "Reading her photo…" : "What her photo says"}</h2>
+      <h2 className="text-[14px] font-[650] leading-5">
+        {loading ? "Reading her photo…" : analysis?.source === "catalog" ? "What the matches point to" : "What her photo says"}
+      </h2>
 
       {loading ? (
         <>
@@ -50,7 +50,7 @@ export function AnalysisCard({
         </>
       ) : (
         <p className="pt-1 text-[13px] leading-[18px] text-giver-text2">
-          {UNAVAILABLE_COPY[analysis?.unavailable ?? "error"]}
+          {UNAVAILABLE_COPY[analysis?.unavailable ?? "thin"] ?? UNAVAILABLE_COPY.thin}
         </p>
       )}
     </section>

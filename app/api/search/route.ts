@@ -1,4 +1,5 @@
 import { searchCatalog, type SearchArgs } from "@/lib/catalog";
+import { cuesFromTitles } from "@/lib/cues";
 import { toSnapshot } from "@/lib/snapshot";
 
 export const dynamic = "force-dynamic";
@@ -48,11 +49,18 @@ export async function POST(req: Request) {
       ? { like: [{ image: { content_type: body.photo.contentType || "image/jpeg", data: body.photo.data } }] }
       : { query: occasion ? `housewarming gift — ${occasion}` : "housewarming gift" };
 
+  const mode = cue ? "cue" : body.photo?.data ? "photo" : "text";
+  // Photo mode fetches a wider net so the cue extraction has enough titles to find themes.
+  const limit = mode === "photo" ? 18 : 6;
+
   try {
-    const result = await searchCatalog({ ...args, context, filters, pagination: { limit: 6 } });
-    const products = result.products.map(toSnapshot);
+    const result = await searchCatalog({ ...args, context, filters, pagination: { limit } });
+    const all = result.products.map(toSnapshot);
+    const products = all.slice(0, 6);
     const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
-    return Response.json({ products, makers, mode: cue ? "cue" : body.photo?.data ? "photo" : "text" });
+    const derived = mode === "photo" ? cuesFromTitles(all.map((p) => ({ title: p.title, seller: p.sellerName }))) : null;
+    if (derived) console.log(`[api/search] catalog cues ← ${derived.cues.map((c) => c.label).join(", ") || "(none)"}`);
+    return Response.json({ products, makers, mode, ...(derived ? { read: derived.read, cues: derived.cues } : {}) });
   } catch (e) {
     console.error("[api/search] failed:", (e as Error).message);
     return Response.json({ error: "Search failed. Try again." }, { status: 502 });

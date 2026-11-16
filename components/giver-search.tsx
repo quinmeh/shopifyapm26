@@ -33,9 +33,14 @@ export function GiverSearch() {
   const [budget, setBudget] = useState<Budget>(BUDGETS[1]);
   const [location, setLocation] = useState<ShipLocation>({ label: "Seattle, WA", region: "WA" });
 
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  // Two cue sources: Claude reads the photo (optional, needs a key); the catalog derives themes from the
+  // visual matches (always). Claude wins when it returns cues; otherwise the catalog's show.
+  const [claude, setClaude] = useState<AnalysisResult | null>(null);
+  const [catalog, setCatalog] = useState<AnalysisResult | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [cue, setCue] = useState<Cue | null>(null); // null = everything in the photo
+  const analysis: AnalysisResult | null = claude && claude.cues.length > 0 ? claude : catalog ?? (analyzing ? null : claude);
+  const setAnalysis = (a: AnalysisResult | null) => { setClaude(a); setCatalog(a); };
 
   const [products, setProducts] = useState<ProductSnapshot[]>([]);
   const [makers, setMakers] = useState(0);
@@ -64,10 +69,15 @@ export function GiverSearch() {
       });
       if (id !== searchReq.current) return;
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as { products: ProductSnapshot[]; makers: number };
+      const json = (await res.json()) as {
+        products: ProductSnapshot[]; makers: number; mode: string; read?: string | null; cues?: Cue[];
+      };
       setProducts(json.products);
       setMakers(json.makers);
       setStatus(json.products.length ? "ready" : "empty");
+      if (json.mode === "photo") {
+        setCatalog(json.cues?.length ? { read: json.read ?? null, cues: json.cues, source: "catalog" } : { read: null, cues: [], unavailable: "thin" });
+      }
     } catch {
       if (id === searchReq.current) setStatus("error");
     }
@@ -76,7 +86,8 @@ export function GiverSearch() {
   const analyze = useCallback(async (p: Photo, occ: string) => {
     const id = ++analyzeReq.current;
     setAnalyzing(true);
-    setAnalysis(null);
+    setClaude(null);
+    setCatalog(null);
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -84,9 +95,10 @@ export function GiverSearch() {
         body: JSON.stringify({ photo: { contentType: p.contentType, data: p.data }, occasion: occ }),
       });
       if (id !== analyzeReq.current) return;
-      setAnalysis(res.ok ? ((await res.json()) as AnalysisResult) : { read: null, cues: [], unavailable: "error" });
+      const out = res.ok ? ((await res.json()) as AnalysisResult) : { read: null, cues: [], unavailable: "error" };
+      setClaude(out.cues.length ? { ...out, source: "claude" } : out);
     } catch {
-      if (id === analyzeReq.current) setAnalysis({ read: null, cues: [], unavailable: "error" });
+      if (id === analyzeReq.current) setClaude({ read: null, cues: [], unavailable: "error" });
     } finally {
       if (id === analyzeReq.current) setAnalyzing(false);
     }
@@ -102,8 +114,10 @@ export function GiverSearch() {
     void search(photo, null, occasion, budget, region);
   };
 
+  // The photo read is "in progress" until Claude has answered AND the catalog cues are in.
+  const analysisLoading = analyzing || (!!photo && !cue && status === "loading" && !(claude && claude.cues.length > 0));
   // Reading screen auto-advances once both the read and the search have settled.
-  const readingDone = step === "reading" && !analyzing && status !== "loading";
+  const readingDone = step === "reading" && !analysisLoading && status !== "loading";
   useEffect(() => {
     if (!readingDone) return;
     const t = setTimeout(() => setStep("matches"), 1100);
@@ -241,8 +255,8 @@ export function GiverSearch() {
           </h1>
           <ol className="flex w-full max-w-[320px] flex-col gap-2.5">
             {photo && (
-              <ReadStep done={!analyzing} failed={readFailed}
-                label={analyzing ? "Looking at the photo" : readFailed ? "Photo read is off — matching on the photo itself" : analysis?.read ?? "Looked at the photo"} />
+              <ReadStep done={!analysisLoading} failed={readFailed}
+                label={analysisLoading ? "Looking at the photo" : readFailed ? "Matches were too varied to name a theme" : analysis?.read ?? "Looked at the photo"} />
             )}
             {cues.map((c, i) => (
               <ReadStep key={c.label} done delay={i * 180} label={`Found: ${c.label}`} />
@@ -273,7 +287,7 @@ export function GiverSearch() {
       <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
         {fileInput}
         <PhotoInputCard photo={photo} searching={loading && clearedByPhoto} onChange={() => fileRef.current?.click()} />
-        {photo && <AnalysisCard analysis={analysis} loading={analyzing} active={cue} onPick={onCue} />}
+        {photo && <AnalysisCard analysis={analysis} loading={analysisLoading} active={cue} onPick={onCue} />}
         <div className="grid grid-cols-2 gap-2.5">
           <Field label="Budget" htmlFor="budget">
             <select id="budget" className={inputCls} value={budget.label}

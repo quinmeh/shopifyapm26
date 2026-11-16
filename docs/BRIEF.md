@@ -40,7 +40,8 @@ Differentiator: recipient confirm-or-choose **across every merchant in Shopify C
 ## 3. Scope
 
 **Build with real API calls**
-- Photo read → Claude vision (`POST /api/analyze`): 3–5 detected cues + one-line taste read. Cues are tappable themed searches. The only AI call in the app; degrades to "Photo read is off" without `ANTHROPIC_API_KEY`.
+- Photo cues → derived from the catalog: `/api/search` in photo mode fetches 18 visual matches, counts the themes their titles share (`lib/cues.ts`), and returns the top 6 products plus 2–5 cues ("The matches point to cat, window and book"). No AI, no key. Cues are tappable themed searches.
+- Optional upgrade: with `ANTHROPIC_API_KEY` set, `POST /api/analyze` reads the photo itself with Claude vision and its cues replace the catalog-derived ones.
 - Photo search (+ text fallback) → `search_catalog`. Verified: any `query` sent with an image overrides the visual signal, so photo search is pure visual; cues and the no-photo path are text searches.
 - Swap check on the pick → `search_catalog` with `like: [{id}]`
 - Recipient variant options → `get_product`
