@@ -1,0 +1,7 @@
+.git/
+.env*
+artifacts/
+test-results/
+playwright-report/
+scripts/sample.jpg
+*.tsbuildinfo
