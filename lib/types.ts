@@ -13,7 +13,9 @@ export type ProductSnapshot = {
 };
 
 export type Address = {
+  fullName?: string; // Required on new confirmations; optional for existing saved gifts.
   line1: string;
+  line2?: string;
   city: string;
   region: string;
   postalCode: string;
@@ -21,6 +23,7 @@ export type Address = {
 };
 
 export type GiftStatus = "sent" | "confirmed" | "completed";
+export type DeliveryMethod = "ship_to_recipient" | "give_in_person";
 
 export type Gift = {
   ownerEmail?: string; // server-side ownership; never sent to recipient views
@@ -31,6 +34,7 @@ export type Gift = {
   recipientLabel: string; // "your sister" (giver-side copy)
   occasion?: string; // drives "For your new place"
   note: string;
+  deliveryMethod?: DeliveryMethod; // Missing on older gifts means ship_to_recipient. Fixed at creation.
   pick: ProductSnapshot;
   approvedSwaps: ProductSnapshot[]; // 0–3
   status: GiftStatus;
@@ -39,7 +43,7 @@ export type Gift = {
     variantId: string;
     selected?: { name: string; label: string }[];
     variantTitle: string;
-    address: Address;
+    address?: Address; // Required only when shipping directly to the recipient.
     confirmedAt: string;
   };
 };

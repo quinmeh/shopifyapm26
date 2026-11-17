@@ -232,6 +232,7 @@ export function GiverSearch() {
               </fieldset>
               <Field label="Ships to" htmlFor="ships">
                 <LocationPicker value={location} onChange={setLocation} />
+                <p className="text-[12px] text-giver-text2">Use their location for direct delivery, or yours if you’ll give it in person.</p>
               </Field>
             </>
           )}
@@ -320,6 +321,7 @@ export function GiverSearch() {
             </Field>
             <Field label="Ships to" htmlFor="ships">
               <LocationPicker value={location} onChange={onLocation} />
+              <p className="text-[12px] text-giver-text2">Your location if giving in person.</p>
             </Field>
           </div>
           {status !== "empty" && (

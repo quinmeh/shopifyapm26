@@ -117,13 +117,14 @@ type Gift = {
   recipientLabel: string;         // "your sister" (giver-side copy)
   occasion?: string;              // drives "For your new place"
   note: string;
+  deliveryMethod?: "ship_to_recipient" | "give_in_person"; // Defaults to direct shipping for legacy gifts; fixed at creation.
   pick: ProductSnapshot;
   approvedSwaps: ProductSnapshot[];       // 0–3
   status: "sent" | "confirmed" | "completed";
   confirmation?: {
     chosenProductId: string;
     variantId: string; variantTitle: string;
-    address: { line1: string; city: string; region: string; postalCode: string; country: "US" };
+    address?: { fullName?: string; line1: string; line2?: string; city: string; region: string; postalCode: string; country: "US" }; // Address and fullName required on new direct-shipping confirmations; omitted for in-person gifts.
     confirmedAt: string;
   };
 };
@@ -148,6 +149,7 @@ type Gift = {
 | `POST /api/gifts` | create gift |
 | `GET /api/gifts/[id]` | read gift (recipient view strips prices) |
 | `POST /api/gifts/[id]/confirm` | save recipient choice; idempotent |
+| `POST /api/address-search` | US street-address lookup for a valid gift link; fills street, city, state and ZIP |
 | `POST /api/gifts/[id]/checkout` | re-fetch final variant → `{ checkoutUrl, priceChanged, oldCents, newCents, soldOut }` |
 
 Recipient-facing responses must not include prices.

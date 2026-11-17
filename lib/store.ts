@@ -13,11 +13,12 @@ function redisOrNull(): Redis | null {
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     return Redis.fromEnv();
   }
+  if (process.env.NODE_ENV === "production") throw new Error("Persistent gift storage must be configured.");
   return null;
 }
 
 export function storageMode(): "upstash" | "memory" {
-  return redisOrNull() ? "upstash" : "memory";
+  return process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN ? "upstash" : "memory";
 }
 
 function mem(): MemStore {

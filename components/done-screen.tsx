@@ -7,6 +7,8 @@ import { CheckIcon, Screen } from "./ui";
 
 export function DoneScreen({ gift }: { gift: RecipientGift }) {
   const c = gift.confirmation!;
+  const inPerson = gift.deliveryMethod === "give_in_person";
+  const address = c.address;
   const chosen = [gift.pick, ...gift.approvedSwaps].find((p) => p.id === c.chosenProductId) ?? gift.pick;
   return (
     <Screen theme="gift">
@@ -15,7 +17,7 @@ export function DoneScreen({ gift }: { gift: RecipientGift }) {
         <span className="flex h-[88px] w-[88px] items-center justify-center rounded-full bg-success-tint text-success"><CheckIcon size={40} /></span>
         <div>
           <h1 className="text-[30px] font-bold leading-9 tracking-[-0.4px] text-gift-text">You’re all set</h1>
-          <p className="pt-2 text-[14px] leading-5 text-gift-text2">Your choice is saved. {gift.giverName} can now finish sending it.</p>
+          <p className="pt-2 text-[14px] leading-5 text-gift-text2">{inPerson ? `Your choice is saved. ${gift.giverName} will take it from here.` : `Your choice and delivery details are saved. ${gift.giverName} can now finish the purchase.`}</p>
         </div>
         <GiftCard className="flex w-full items-center gap-3 p-3 text-left">
           <span className="h-14 w-14 shrink-0 overflow-hidden rounded-control bg-skeleton">
@@ -25,9 +27,12 @@ export function DoneScreen({ gift }: { gift: RecipientGift }) {
             )}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="line-clamp-2 text-[14px] font-semibold leading-[18px] text-gift-text">{chosen.title}{c.variantTitle && c.variantTitle !== "Default" ? ` · ${c.variantTitle}` : ""}</span>
+            <span className="line-clamp-2 text-[14px] font-semibold leading-[18px] text-gift-text">{chosen.title}{c.variantTitle && c.variantTitle !== "Default" && c.variantTitle !== chosen.title ? ` · ${c.variantTitle}` : ""}</span>
             <span className="block truncate text-[12px] text-gift-text2">{chosen.sellerName ?? "Independent maker"}</span>
-            <span className="block truncate text-[12px] text-gift-text2">To {c.address.line1}, {c.address.city}</span>
+            {inPerson ? <span className="block text-[12px] text-gift-text2">{gift.giverName} will give this to you in person.</span> : address && <>
+              {address.fullName && <span className="block text-[12px] text-gift-text2">For {address.fullName}</span>}
+              <span className="block text-[12px] text-gift-text2">To {address.line1}{address.line2 ? `, ${address.line2}` : ""}, {address.city}, {address.region} {address.postalCode}</span>
+            </>}
           </span>
         </GiftCard>
         <span className="rounded-full bg-clay-tint px-3 py-1.5 text-[12px] font-semibold text-clay">{possessive(gift.giverName)} note travels with your gift</span>

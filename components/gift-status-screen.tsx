@@ -19,8 +19,9 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
   const [notice, setNotice] = useState("");
   const [url, setUrl] = useState("");
   const [selfChoice, setSelfChoice] = useState<Gift["confirmation"]>();
-  const [merchantUrl, setMerchantUrl] = useState<string | null>(null);
   const c = gift.confirmation;
+  const inPerson = gift.deliveryMethod === "give_in_person";
+  const address = inPerson ? undefined : c?.address;
   const chosen = [gift.pick, ...gift.approvedSwaps].find(p => p.id === c?.chosenProductId) ?? gift.pick;
 
   const refresh = useCallback(async () => {
@@ -57,6 +58,14 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
     try { await navigator.clipboard.writeText(url); setNotice("Link copied. Send it to them when you’re ready."); }
     catch { setNotice("Select and copy the link below."); }
   }
+  async function copyDelivery() {
+    if (!address) return;
+    const details = [address.fullName, address.line1, address.line2, `${address.city}, ${address.region} ${address.postalCode}`, address.country].filter(Boolean).join("\n");
+    try {
+      await navigator.clipboard.writeText(details);
+      setNotice("Delivery details copied. Use them for the shipping address at merchant checkout.");
+    } catch { setNotice("Couldn’t copy. Select the delivery details above and copy them manually."); }
+  }
   async function reopen(self = false) {
     setBusy(true); setError("");
     try {
@@ -71,6 +80,22 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
   }
   async function proceed() {
     if (!check || busy) return;
+    // Reserve the tab during the click so the async stock check doesn't cause
+    // popup blockers to reject the merchant navigation afterward.
+    const checkoutTab = window.open("about:blank", "_blank");
+    if (!checkoutTab) {
+      setNotice("Allow pop-ups for this site, then click the checkout button again.");
+      return;
+    }
+    checkoutTab.opener = null;
+    checkoutTab.document.title = "Checking your gift";
+    checkoutTab.document.body.textContent = "Checking price and stock before opening merchant checkout…";
+    const referrer = checkoutTab.document.createElement("meta");
+    referrer.name = "referrer";
+    referrer.content = "no-referrer";
+    checkoutTab.document.head.append(referrer);
+    let opened = false;
+    setNotice("");
     setBusy(true); setError("");
     try {
       const r = await fetch(`/api/gifts/${gift.id}/checkout`, { method: "POST", headers: { "content-type": "application/json" },
@@ -79,12 +104,19 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
       if (!r.ok) throw new Error(result.error);
       setCheck(result);
       if (result.proceed && result.checkoutUrl) {
-        setMerchantUrl(result.checkoutUrl);
         setGift(g => ({ ...g, status: "completed" }));
-        window.location.assign(result.checkoutUrl);
+        if (!checkoutTab.closed) {
+          checkoutTab.location.replace(result.checkoutUrl);
+          opened = true;
+        } else {
+          setNotice("The checkout tab was closed. Use the checkout button below to open it again.");
+        }
       }
     } catch (e) { setError(e instanceof Error ? e.message : "Couldn’t open checkout."); }
-    finally { setBusy(false); }
+    finally {
+      if (!opened && !checkoutTab.closed) checkoutTab.close();
+      setBusy(false);
+    }
   }
 
   if (selfChoice) return <OpenScreen gift={toRecipientGift(gift)} initialProduct={gift.approvedSwaps.find(p => p.id !== selfChoice.chosenProductId) ?? gift.pick}
@@ -97,7 +129,8 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
     <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
       {!c ? <Card className="flex flex-col gap-3 p-3.5">
         <h1 className="text-[24px] font-bold leading-[30px] tracking-[-0.4px]">Waiting for {gift.recipientLabel} to choose</h1>
-        <p className="text-[14px] text-giver-text2">They’ll confirm the details and add their address. Nothing has been charged.</p>
+        <p className="text-[14px] text-giver-text2">{inPerson ? "They’ll confirm their gift and options. You’ll ship it to yourself and give it in person." : "They’ll confirm the details and add their address."} Nothing has been charged.</p>
+        <p className="text-[13px] font-medium">Delivery: {inPerson ? "Give it in person" : "Ship directly to them"}</p>
         <input readOnly aria-label="Gift link" value={url} className={inputCls} onFocus={e => e.currentTarget.select()} />
         <SecondaryButton onClick={() => void copy()}>Copy link again</SecondaryButton>
         <TextLinkButton onClick={() => void refresh().catch(() => setError("Couldn’t refresh. Try again."))}>Refresh status</TextLinkButton>
@@ -105,7 +138,7 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
         <div className="flex gap-3 rounded-card bg-success-tint p-3.5 text-success-text">
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-white"><CheckIcon /></span>
           <div><h1 className="text-[15px] font-[650]">{gift.status === "completed" ? "Merchant checkout opened" : c.chosenProductId === gift.pick.id ? `${person} loved your pick` : `${person} chose ${chosen.shortName}`}</h1>
-            <p className="pt-1 text-[13px] leading-[18px]">{gift.status === "completed" ? "Prototype completed status · payment has not been verified." : `They confirmed ${c.variantTitle} and added their address. Your note goes with it.`}</p></div>
+            <p className="pt-1 text-[13px] leading-[18px]">{gift.status === "completed" ? "Prototype completed status · payment has not been verified." : inPerson ? "They confirmed their gift and options. You’ll give it to them in person." : "They confirmed their gift and delivery details. Your note goes with it."}</p></div>
         </div>
         <Card className="p-3.5">
           <div className="flex gap-3">
@@ -113,19 +146,24 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
               // eslint-disable-next-line @next/next/no-img-element -- arbitrary merchant CDN
               <img src={chosen.imageUrl} alt="" className="h-20 w-20 rounded-control object-cover" />
             )}
-            <div className="min-w-0"><h2 className="text-[15px] font-semibold">{chosen.title} · {c.variantTitle}</h2><p className="text-[13px] text-giver-text2">{merchant}</p>
+            <div className="min-w-0"><h2 className="text-[15px] font-semibold">{chosen.title}{c.variantTitle && c.variantTitle !== "Default" && c.variantTitle !== chosen.title ? ` · ${c.variantTitle}` : ""}</h2><p className="text-[13px] text-giver-text2">{merchant}</p>
               {chosen.rating && <p className="text-[12px]">{chosen.rating.value} ★ ({chosen.rating.count})</p>}
               {(check?.refundPolicyUrl ?? chosen.refundPolicyUrl)?.startsWith("https://") && <a className="text-[13px] underline" href={check?.refundPolicyUrl ?? chosen.refundPolicyUrl} target="_blank" rel="noopener noreferrer">Refund policy</a>}
             </div>
           </div>
           {c.chosenProductId !== gift.pick.id && <p className="pt-2 text-[12px] text-giver-text2">Your original pick: {gift.pick.title}</p>}
           <dl className="mt-3 space-y-2 text-[13px]">
+            <Row label="Delivery" value={inPerson ? "Give it in person" : "Ship directly to them"} />
+            {address?.fullName && <Row label="Recipient" value={address.fullName} />}
+            <Row label="Ship to" value={inPerson ? "Your address at merchant checkout" : address ? [address.line1, address.line2, `${address.city}, ${address.region} ${address.postalCode}`].filter(Boolean).join(", ") : "Recipient’s address"} />
             <Row label="Item" value={money(check?.newCents ?? chosen.priceCents)} />
-            <Row label={`Shipping to ${c.address.city}`} value="Calculated at checkout" />
+            <Row label={address ? `Shipping to ${address.city}` : "Shipping to you"} value="Calculated at checkout" />
             <Row label="Arrives" value="5–8 business days · Prototype estimate" />
             <Row label="Item subtotal" value={money(check?.newCents ?? chosen.priceCents)} />
             <Row label="Final total" value="Includes shipping and tax at checkout" />
           </dl>
+          <p className="pt-3 text-[13px] text-giver-text2">{inPerson ? "Ship to yourself. Enter your own shipping address at merchant checkout, then give the gift to them in person." : "Enter the recipient’s delivery details at merchant checkout. Their address is not transferred automatically."}</p>
+          {address && <TextLinkButton onClick={() => void copyDelivery()}>Copy delivery details</TextLinkButton>}
         </Card>
         {gift.status !== "completed" && <>
           {busy && <Card className="flex items-center gap-2 p-3.5 text-[13px]"><Spinner /> Re-checking price and stock…</Card>}
@@ -146,7 +184,7 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
     </main>
     <footer className="sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
       {c && <PrimaryButton disabled={busy || !check || check.soldOut || !!error} onClick={() => void proceed()}>{busy ? "Checking…" : check?.soldOut ? "Currently sold out" : check?.priceChanged ? `Continue at ${money(check.newCents!)}` : gift.status === "completed" ? `Open ${merchant} checkout again ↗` : `Complete purchase at ${merchant} ↗`}</PrimaryButton>}
-      {merchantUrl && <a href={merchantUrl} className="flex min-h-12 items-center justify-center rounded-control bg-ink px-4 text-white">Return to merchant checkout ↗</a>}
+      {c && <p className="pt-2 text-center text-[12px] text-giver-text2">Merchant checkout opens in a new tab.</p>}
       <CreditFooter />
     </footer>
   </Screen>;

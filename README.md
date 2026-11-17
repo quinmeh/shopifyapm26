@@ -16,10 +16,9 @@ Without Upstash env vars the gift store is an in-memory Map (resets on restart).
 
 ## Deploy to Vercel
 
-1. Push to GitHub, then `vercel link` (or import the repo at vercel.com/new).
-2. Storage → Add **Upstash Redis** from the Marketplace → connect to this project. It injects `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
-3. Add `UCP_PROFILE_URL` under Settings → Environment Variables (value in `.env.example`).
-4. `vercel --prod`. Verify `https://<app>.vercel.app/api/health` returns `"storage": "upstash"`.
+See [M5 checks and deployment handoff](docs/M5.md). Production needs a Vercel login/project, an HTTPS `APP_URL`, persistent Upstash Redis, and real email configuration. `/api/health` returns 503 in production when required configuration is missing; local development continues to support memory storage and preview email.
+
+`npm run build` uses Next.js's supported Webpack builder and Tailwind's PostCSS processor. The local Turbopack production worker could not bind its internal port; the Webpack production build was verified successfully. Development still uses Turbopack.
 
 All Shopify catalog calls run server-side in `app/api/*` via [lib/catalog.ts](lib/catalog.ts).
 
@@ -28,3 +27,18 @@ All Shopify catalog calls run server-side in `app/api/*` via [lib/catalog.ts](li
 Givers create and share immediately, with private tracking saved to their browser. After creation, optional email verification enables notifications and cross-device recovery at `/gifts`. Recipients remain account-free. See [docs/EMAIL.md](docs/EMAIL.md) for Resend credentials, required production Redis storage, scheduled notification retries, and local `/dev/mail` preview. Preview emails do not send real mail.
 
 Verification: `node --import tsx --test scripts/email.test.ts scripts/checkout.test.ts`. With the local server running and email preview enabled, `node --import tsx scripts/email-smoke.ts` exercises verification, access control, confirmation notifications, and logout.
+
+## M5 verification and demo
+
+```bash
+npm test                     # focused API/business-rule tests
+npm run lint
+npm run build
+npm run dev                  # leave running in another terminal
+npm run test:e2e              # Chrome, 390px; fixtures for third-party services
+node --import tsx scripts/delivery-smoke.ts
+node --import tsx scripts/email-smoke.ts  # local EMAIL_MODE=preview only
+npm run demo:seed             # creates an unconfirmed gift from the live catalog
+```
+
+Browser checks use installed Google Chrome. Screenshots and traces live in ignored `artifacts/` and `test-results/`. The seed command prints a recipient URL and saves a private automation cookie to `artifacts/demo-session.json` (do not share it). The seeded giver session belongs to the script; create a gift in your browser to test your own private tracking. Local gifts disappear when the server restarts. Use `npm run demo:seed -- --in-person` to seed the other delivery path.

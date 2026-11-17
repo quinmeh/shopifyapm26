@@ -66,6 +66,11 @@ test("confirmation email retries use a stable key and exclude private address", 
     assert.equal(calls.length, 2); assert.deepEqual(calls[0], calls[1]);
     assert.ok(!calls[0].body.includes("Private Street"));
     assert.ok(calls[0].body.includes("/gift/email-test"));
+    assert.ok(calls[0].body.includes("Copy their delivery details"));
+    await queueConfirmation({ ...gift, id: "email-in-person-test", deliveryMethod: "give_in_person", confirmation: { ...gift.confirmation!, address: undefined } });
+    assert.equal(calls.length, 3);
+    assert.ok(calls[2].body.includes("Enter your own shipping address"));
+    assert.ok(!calls[2].body.includes("Private Street"));
   } finally {
     globalThis.fetch = originalFetch;
     if (oldKey === undefined) delete process.env.RESEND_API_KEY; else process.env.RESEND_API_KEY = oldKey;

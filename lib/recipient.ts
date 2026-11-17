@@ -7,6 +7,7 @@ export function toRecipientGift(gift: Gift): RecipientGift {
   return {
     id: gift.id, createdAt: gift.createdAt, giverName: gift.giverName,
     recipientLabel: gift.recipientLabel, occasion: gift.occasion, note: gift.note,
+    deliveryMethod: gift.deliveryMethod ?? "ship_to_recipient",
     status: gift.status, confirmation: gift.confirmation,
     pick: stripPrice(gift.pick),
     approvedSwaps: gift.approvedSwaps.map(stripPrice),

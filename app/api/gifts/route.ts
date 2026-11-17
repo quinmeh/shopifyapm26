@@ -3,7 +3,7 @@ import { nanoid } from "nanoid";
 import { digest, ensureGiverBrowser, giverEmail, sameOrigin } from "@/lib/giver-auth";
 import { addMember } from "@/lib/private-store";
 import { saveGift } from "@/lib/store";
-import type { Gift, ProductSnapshot } from "@/lib/types";
+import type { DeliveryMethod, Gift, ProductSnapshot } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +13,7 @@ type Body = {
   note?: string;
   pick?: ProductSnapshot;
   approvedSwaps?: ProductSnapshot[];
+  deliveryMethod?: DeliveryMethod;
 };
 
 const isSnapshot = (p: unknown): p is ProductSnapshot =>
@@ -30,6 +31,9 @@ export async function POST(req: Request) {
   }
 
   if (!body || typeof body !== "object") return Response.json({ error: "Invalid request" }, { status: 400 });
+  if (body.deliveryMethod !== undefined && body.deliveryMethod !== "ship_to_recipient" && body.deliveryMethod !== "give_in_person") {
+    return Response.json({ error: "Choose how you would like to give this gift." }, { status: 400 });
+  }
   const note = (body.note ?? "").trim();
   const recipientLabel = (body.recipientLabel ?? "").trim();
   if (!isSnapshot(body.pick)) return Response.json({ error: "pick required" }, { status: 400 });
@@ -46,6 +50,7 @@ export async function POST(req: Request) {
     recipientLabel,
     occasion: (body.occasion ?? "").trim() || undefined,
     note: note.slice(0, 500),
+    deliveryMethod: body.deliveryMethod ?? "ship_to_recipient",
     pick: body.pick,
     approvedSwaps,
     status: "sent",

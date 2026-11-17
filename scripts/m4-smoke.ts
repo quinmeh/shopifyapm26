@@ -18,10 +18,13 @@ async function main() {
   assert.equal(page.status, 200);
   assert.match(await page.text(), /Waiting for/);
   assert.equal((await post(`/api/gifts/${id}/checkout`)).status, 409);
-  const confirmation = { chosenProductId: "gid://shopify/p/m4-test", variantId: "test-variant", selected: [{ name: "Size", label: "M" }], address: { line1: "1 Test Street", city: "Seattle", region: "WA", postalCode: "98101" } };
+  const confirmation = { chosenProductId: "gid://shopify/p/m4-test", variantId: "test-variant", selected: [{ name: "Size", label: "M" }], address: { fullName: "Test Recipient", line1: "1 Test Street", line2: "Apt 4", city: "Seattle", region: "WA", postalCode: "98101" } };
+  assert.equal((await post(`/api/gifts/${id}/confirm`, { ...confirmation, address: { ...confirmation.address, fullName: "" } })).status, 400);
   assert.equal((await post(`/api/gifts/${id}/confirm`, confirmation)).status, 200);
   const data = await (await fetch(`${base}/api/gifts/${id}?for=recipient`)).json();
   assert.deepEqual(data.confirmation.selected, confirmation.selected);
+  assert.equal(data.confirmation.address.fullName, "Test Recipient");
+  assert.equal(data.confirmation.address.line2, "Apt 4");
   assert.ok(!JSON.stringify(data).includes("priceCents"));
   const confirmedPage = await get(`/gift/${id}`);
   assert.equal(confirmedPage.status, 200);

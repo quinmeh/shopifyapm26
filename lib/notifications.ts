@@ -8,8 +8,8 @@ export async function queueConfirmation(gift: Gift) {
   if (!gift.ownerEmail || !gift.confirmation) return;
   const key = `confirmation-${digest(`${gift.id}:${gift.confirmation.confirmedAt}`)}`;
   await put(`notification:${key}`, { createdAt: Date.now(), mail: { to: gift.ownerEmail,
-    subject: "They picked their gift — finish sending it",
-    text: `The gift you sent has been confirmed. Your note goes with it.\n\nReview the choice and finish sending it:\n${appOrigin()}/gift/${gift.id}\n\nUse your verified email to access this private page. Nothing has been charged yet.`,
+    subject: "They picked their gift — finish the purchase",
+    text: `The gift you sent has been confirmed. Your note goes with it.\n\n${gift.deliveryMethod === "give_in_person" ? "You chose to give it in person. Enter your own shipping address at merchant checkout." : "You chose to ship directly to them. Copy their delivery details from the gift page into merchant checkout."}\n\nReview the choice and finish the purchase:\n${appOrigin()}/gift/${gift.id}\n\nUse your verified email to access this private page. Nothing has been charged yet.`,
   } } satisfies Job, 86400 * 30, true);
   await addMember("notifications", key);
   await deliver(key);

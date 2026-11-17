@@ -3,7 +3,7 @@
 // remove/undo, one-of-a-kind), who it's for, note, create gift → link + Copy.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatCents } from "@/lib/catalog";
-import type { ProductSnapshot } from "@/lib/types";
+import type { DeliveryMethod, ProductSnapshot } from "@/lib/types";
 import { SwapMiniCard } from "./swap-mini-card";
 import { GiverEmail } from "./giver-email";
 import {
@@ -27,6 +27,7 @@ export function PickScreen({ productId }: { productId: string }) {
   const [swaps, setSwaps] = useState<SwapState>({ status: "loading", items: [], removed: [] });
   const [recipientLabel, setRecipientLabel] = useState("");
   const [note, setNote] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("ship_to_recipient");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ id: string; url: string } | null>(null);
@@ -94,7 +95,7 @@ export function PickScreen({ productId }: { productId: string }) {
       const r = await fetch("/api/gifts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: ctx.product, approvedSwaps: approved }),
+        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: ctx.product, approvedSwaps: approved, deliveryMethod }),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Couldn’t create the gift.");
       const j = (await r.json()) as { id: string };
@@ -239,7 +240,7 @@ export function PickScreen({ productId }: { productId: string }) {
           )}
           {oneOfAKind && (
             <p className="rounded-control bg-giver-bg px-3 py-2 text-[13px] leading-[18px]">
-              One of a kind. They can confirm details and address, but there’s nothing to swap to.
+              One of a kind. They can confirm their gift details, but there’s nothing to swap to.
             </p>
           )}
         </Card>
@@ -256,6 +257,17 @@ export function PickScreen({ productId }: { productId: string }) {
             placeholder="Your new place deserves a proper view, even on grey days." />
           <p className="text-[12px] text-giver-text2">They read this first. It stays with the gift even if they choose another.</p>
         </div>
+        <fieldset disabled={creating} className="flex flex-col gap-2">
+          <legend className="pb-2 text-[15px] font-[650]">How would you like to give it?</legend>
+          {([
+            { value: "ship_to_recipient", title: "Ship directly to them", description: "They’ll add their delivery address when they confirm." },
+            { value: "give_in_person", title: "Give it in person", description: "Ship it to yourself and hand it to them. Enter your address at merchant checkout." },
+          ] as const).map(option => <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-card border bg-surface p-3.5 ${deliveryMethod === option.value ? "border-ink ring-1 ring-ink" : "border-giver-border"}`}>
+            <input type="radio" name="delivery-method" value={option.value} checked={deliveryMethod === option.value} onChange={() => setDeliveryMethod(option.value)} className="mt-1 h-4 w-4 shrink-0 accent-ink" />
+            <span><span className="block text-[14px] font-semibold">{option.title}</span><span className="block pt-1 text-[13px] text-giver-text2">{option.description}</span></span>
+          </label>)}
+          <p className="text-[12px] text-giver-text2">This choice is saved when you create the link.</p>
+        </fieldset>
       </main>}
 
       <section aria-label={created ? "Share your gift" : "Create your gift"} className={created ? "flex flex-1 flex-col gap-3 px-5 pb-4" : "sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3"}>
@@ -263,6 +275,7 @@ export function PickScreen({ productId }: { productId: string }) {
         {created ? (
           <Card className="flex flex-col gap-2 p-3">
             <span className="text-[13px] font-[650]">Your gift link</span>
+            <p className="text-[13px] text-giver-text2">{deliveryMethod === "give_in_person" ? "Give it in person · They’ll confirm their gift; you’ll ship it to yourself." : "Ship directly to them · They’ll confirm their gift and delivery address."}</p>
             <div className="flex items-center gap-2">
               <input readOnly value={created.url} onFocus={(e) => e.currentTarget.select()} aria-label="Gift link"
                 className={`${inputCls} tabular flex-1 text-[13px]`} />

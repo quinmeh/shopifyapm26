@@ -7,14 +7,16 @@ import type { Address, OptionGroup, RecipientGift, RecipientProduct, RecipientVa
 import { AlsoLikedTag, BottomSheet, GiftCard, OptionRow, SizePill, WhyCard } from "./gift-ui";
 import { BackButton, PrimaryButton, Spinner, TextLinkButton } from "./ui";
 import { Screen } from "./ui";
+import { AddressSearch } from "./address-search";
 
 type Selections = Record<string, string>;
 type AddressForm = Omit<Address, "country">;
-const EMPTY: AddressForm = { line1: "", city: "", region: "", postalCode: "" };
+const EMPTY: AddressForm = { fullName: "", line1: "", line2: "", city: "", region: "", postalCode: "" };
 
 export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }: { gift: RecipientGift; initialProduct?: RecipientProduct; initialAddress?: AddressForm; onConfirmed?: () => void }) {
   const router = useRouter();
   const giver = gift.giverName;
+  const inPerson = gift.deliveryMethod === "give_in_person";
   const [chosen, setChosen] = useState<RecipientProduct>(initialProduct ?? gift.pick);
   const [options, setOptions] = useState<OptionGroup[] | null>(null);
   const [selections, setSelections] = useState<Selections>({});
@@ -79,10 +81,13 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
 
   const validate = () => {
     const e: typeof errors = {};
-    if (!address.line1.trim()) e.line1 = "Add a street address.";
-    if (!address.city.trim()) e.city = "Add a city.";
-    if (!/^[A-Za-z]{2}$/.test(address.region.trim())) e.region = "2-letter state.";
-    if (!/^\d{5}(-\d{4})?$/.test(address.postalCode.trim())) e.postalCode = "5-digit ZIP.";
+    if (!inPerson) {
+      if (!address.fullName?.trim()) e.fullName = "Add the recipient’s full name.";
+      if (!address.line1.trim()) e.line1 = "Add a street address.";
+      if (!address.city.trim()) e.city = "Add a city.";
+      if (!/^[A-Za-z]{2}$/.test(address.region.trim())) e.region = "2-letter state.";
+      if (!/^\d{5}(-\d{4})?$/.test(address.postalCode.trim())) e.postalCode = "5-digit ZIP.";
+    }
     if (needsOptions && !allChosen) e.variant = "Pick one of each option.";
     else if (allChosen && variant && !variant.available) e.variant = "That combination is sold out — try another.";
     setErrors(e);
@@ -97,7 +102,7 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
       const r = await fetch(`/api/gifts/${gift.id}/confirm`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chosenProductId: chosen.id, variantId: variant.id, selected: variant.options, variantTitle: variantLabel(selections, variant), address: { ...address, country: "US" } }),
+        body: JSON.stringify({ chosenProductId: chosen.id, variantId: variant.id, selected: variant.options, variantTitle: variantLabel(selections, variant), ...(!inPerson ? { address: { ...address, country: "US" } } : {}) }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       if (onConfirmed) onConfirmed();
@@ -113,7 +118,7 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
   const field = (key: keyof AddressForm, label: string, extra?: Partial<React.InputHTMLAttributes<HTMLInputElement>>) => (
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <label htmlFor={`addr-${key}`} className="text-[13px] font-medium text-gift-text2">{label}</label>
-      <input id={`addr-${key}`} value={address[key]} onChange={(e) => { setAddress({ ...address, [key]: e.target.value }); setErrors((er) => ({ ...er, [key]: undefined })); }}
+      <input id={`addr-${key}`} value={address[key] ?? ""} onChange={(e) => { setAddress({ ...address, [key]: e.target.value }); setErrors((er) => ({ ...er, [key]: undefined })); }}
         aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `err-${key}` : undefined}
         className={`h-10 w-full rounded-control border bg-surface px-3 text-[14px] text-gift-text outline-none focus:border-ink ${errors[key] ? "border-clay" : "border-gift-input"}`} {...extra} />
       {errors[key] && <p id={`err-${key}`} className="text-[13px] text-clay">{errors[key]}</p>}
@@ -168,23 +173,34 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
         {errors.variant && <p className="text-[13px] text-clay">{errors.variant}</p>}
 
         {/* Address */}
-        <GiftCard className="flex flex-col gap-2.5 p-3.5">
-          <h2 className="text-[15px] font-[650] text-gift-text">Where should it go?</h2>
-          {field("line1", "Street address", { autoComplete: "address-line1" })}
+        {inPerson ? <GiftCard className="p-3.5">
+          <h2 className="text-[15px] font-[650] text-gift-text">{onConfirmed ? "Give it in person" : `${giver} will give this to you in person.`}</h2>
+          <p className="pt-1 text-[13px] text-gift-text2">{onConfirmed ? "Enter your own shipping address at merchant checkout." : "Just confirm your gift and options. No delivery address needed."}</p>
+        </GiftCard> : <GiftCard className="flex flex-col gap-2.5 p-3.5">
+          <h2 className="text-[15px] font-[650] text-gift-text">Where should we send your gift?</h2>
+          {field("fullName", "Recipient’s full name", { autoComplete: "shipping name", maxLength: 100, required: true })}
+          <AddressSearch giftId={gift.id} value={address.line1} city={address.city} region={address.region} postalCode={address.postalCode} error={errors.line1} onChange={line1 => {
+            setAddress(current => ({ ...current, line1 }));
+            setErrors(current => ({ ...current, line1: undefined }));
+          }} onSelect={match => {
+            setAddress(current => ({ ...current, ...match }));
+            setErrors(current => ({ ...current, line1: undefined, city: undefined, region: undefined, postalCode: undefined }));
+          }} />
+          {field("line2", "Apartment, suite, unit · optional", { autoComplete: "shipping address-line2", maxLength: 120 })}
           <div className="flex gap-2">
-            {field("city", "City", { autoComplete: "address-level2" })}
-            <div className="w-[72px] shrink-0">{field("region", "State", { autoComplete: "address-level1", maxLength: 2, placeholder: "WA" })}</div>
-            <div className="w-[96px] shrink-0">{field("postalCode", "ZIP", { autoComplete: "postal-code", inputMode: "numeric" })}</div>
+            {field("city", "City", { autoComplete: "shipping address-level2", maxLength: 100 })}
+            <div className="w-[72px] shrink-0">{field("region", "State", { autoComplete: "shipping address-level1", maxLength: 2, placeholder: "WA" })}</div>
+            <div className="w-[96px] shrink-0">{field("postalCode", "ZIP", { autoComplete: "shipping postal-code", inputMode: "numeric", maxLength: 10 })}</div>
           </div>
           <p className="flex items-center gap-1.5 text-[12px] text-gift-text2">
             <LockIcon /> Your address is saved for this gift and shared with the giver to finish checkout.
           </p>
-        </GiftCard>
+        </GiftCard>}
       </main>
 
       <footer className="sticky bottom-0 border-t border-gift-border bg-gift-bg px-5 pb-4 pt-3">
         <PrimaryButton onClick={() => void confirm()} disabled={submitting || resolving || loadError || options === null || (allChosen && !variantReady)}>
-          {submitting ? "Sending…" : onConfirmed ? "Confirm this alternative" : "Love it — send it to me"}
+          {submitting ? "Saving…" : onConfirmed ? "Confirm this alternative" : inPerson ? "Confirm my gift" : "Confirm gift and delivery"}
         </PrimaryButton>
         {submitError && <p className="pt-2 text-center text-[13px] text-clay">{submitError}</p>}
         {others > 0 && (

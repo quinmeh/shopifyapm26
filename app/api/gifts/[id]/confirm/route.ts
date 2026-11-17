@@ -4,6 +4,7 @@ import { getGift, saveGift } from "@/lib/store";
 import { queueConfirmation } from "@/lib/notifications";
 import { put, take } from "@/lib/private-store";
 import type { Address } from "@/lib/types";
+import { parseShippingAddress } from "@/lib/address";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +39,11 @@ export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/conf
   const variantId = clean(body.variantId);
   if (!variantId) return Response.json({ error: "variantId required" }, { status: 400 });
 
-  const a = body.address ?? {};
-  const address: Address = {
-    line1: clean(a.line1), city: clean(a.city), region: clean(a.region).toUpperCase(), postalCode: clean(a.postalCode), country: "US",
-  };
-  if (!address.line1 || !address.city || !/^[A-Z]{2}$/.test(address.region) || !/^\d{5}(-\d{4})?$/.test(address.postalCode)) {
-    return Response.json({ error: "A complete US address is required" }, { status: 400 });
+  // Delivery is set by the giver at creation, never by the recipient request.
+  const inPerson = gift.deliveryMethod === "give_in_person";
+  const address = inPerson ? undefined : parseShippingAddress(body.address);
+  if (!inPerson && !address) {
+    return Response.json({ error: "The recipient’s full name and complete US address are required." }, { status: 400 });
   }
 
   const lock = `confirm-lock:${id}`;
@@ -53,10 +53,10 @@ export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/conf
     const current = await getGift(id);
     if (!current) return Response.json({ error: "Not found" }, { status: 404 });
     if (current.confirmation) return Response.json({ ok: true, alreadyConfirmed: true, confirmation: current.confirmation });
-    saved = { ...current, status: "confirmed" as const, confirmation: { chosenProductId, variantId, selected: body.selected, variantTitle: clean(body.variantTitle) || "Default", address, confirmedAt: new Date().toISOString() } };
+    saved = { ...current, status: "confirmed" as const, confirmation: { chosenProductId, variantId, selected: body.selected, variantTitle: clean(body.variantTitle) || "Default", ...(address ? { address } : {}), confirmedAt: new Date().toISOString() } };
     await saveGift(saved);
   } finally { await take(lock); }
   await queueConfirmation(saved).catch(() => console.error("[notification] Could not queue; confirmation is saved."));
-  console.log(`[api/gifts/${id}/confirm] ${chosenProductId === gift.pick.id ? "kept the pick" : "chose an alternative"} · variant ${variantId} · ${address.city}, ${address.region}`);
+  console.log(`[api/gifts/${id}/confirm] ${chosenProductId === gift.pick.id ? "kept the pick" : "chose an alternative"} · variant ${variantId} · ${inPerson ? "give in person" : "ship to recipient"}`);
   return Response.json({ ok: true, confirmation: saved.confirmation });
 }

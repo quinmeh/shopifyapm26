@@ -27,7 +27,7 @@ async function main() {
   assert.equal((await post("/api/auth/request", { email, giftId: id }, otherCookie)).status, 403);
   const recipient = await (await get(`/api/gifts/${id}?for=recipient`)).json();
   assert.ok(!JSON.stringify(recipient).includes("ownerBrowserId")); assert.ok(!JSON.stringify(recipient).includes("priceCents"));
-  const confirm = { chosenProductId: body.pick.id, variantId: "test-variant", address: { line1: "123 Private Test Street", city: "Seattle", region: "WA", postalCode: "98101" } };
+  const confirm = { chosenProductId: body.pick.id, variantId: "test-variant", address: { fullName: "Test Recipient", line1: "123 Private Test Street", city: "Seattle", region: "WA", postalCode: "98101" } };
   assert.equal((await post(`/api/gifts/${id}/confirm`, confirm)).status, 200);
   assert.ok(!(await (await get("/dev/mail")).text()).includes(`/gift/${id}`), "No notification before verified contact");
   const requested = await post("/api/auth/request", { email, giftId: id, returnTo: `/gift/${id}` }, guestCookie);
