@@ -1,7 +1,7 @@
 // get_product passthrough: snapshot + option groups + the resolved variant.
 // `?for=recipient` strips every price (BRIEF §7).
 // `?selected=<JSON [{name,label}]>` resolves a variant (JSON so labels may contain commas/colons).
-import { getProduct } from "@/lib/catalog";
+import { getProduct, shopifyCheckoutUrl } from "@/lib/catalog";
 import { stripPrice, toSnapshot } from "@/lib/snapshot";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/product/[id]">) 
           title: v.title,
           available: v.availability?.available ?? true,
           options: v.options ?? [],
-          ...(forRecipient ? {} : { priceCents: v.price?.amount, checkoutUrl: v.checkout_url }),
+          ...(forRecipient ? {} : { priceCents: v.price?.amount, checkoutUrl: shopifyCheckoutUrl(v) }),
         }
       : null;
 

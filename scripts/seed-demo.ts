@@ -15,7 +15,7 @@ async function main() {
     const lookup = await fetch(`${base}/api/product/${encodeURIComponent(product.id)}`);
     if (!lookup.ok) continue;
     const result = await lookup.json();
-    if (result.variant?.id && result.variant.available) { pick = result.product; break; }
+    if (result.variant?.id && result.variant.available && result.variant.checkoutUrl) { pick = result.product; break; }
   }
   if (!pick) throw new Error("No available item could be verified. Try again later.");
   const swaps = await post("/api/swaps", { id: pick.id, priceCents: pick.priceCents, sellerName: pick.sellerName, region: "WA" });

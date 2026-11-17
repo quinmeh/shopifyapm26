@@ -24,6 +24,7 @@ export type CatalogVariant = {
   price?: { amount?: number; currency?: string };
   url?: string;
   checkout_url?: string;
+  source?: string; // "shopify" or "external" (non-Shopify merchant, no checkout_url)
   availability?: { available?: boolean };
   options?: { name: string; label: string }[];
   seller?: CatalogSeller;
@@ -188,6 +189,23 @@ function summarizeProducts(ps: CatalogProduct[]): string {
     .join(" | ");
 }
 
+// ---- Shopify-only checkout ----
+
+// The catalog also lists external (non-Shopify) merchants. Their variants have
+// source "external" and no checkout_url, so the giver could never buy them here.
+// A variant qualifies only when it is not external and has an HTTPS checkout link.
+export function shopifyCheckoutUrl(v: CatalogVariant | undefined): string | null {
+  if (!v?.checkout_url || (v.source && v.source !== "shopify")) return null;
+  try {
+    const url = new URL(v.checkout_url);
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
+
+export function sellsOnShopify(p: CatalogProduct): boolean {
+  return !!p.variants?.some((v) => shopifyCheckoutUrl(v));
+}
+
 // ---- Public tools ----
 
 function toSearchResult(raw: unknown): SearchResult {
@@ -212,7 +230,10 @@ export async function searchCatalog(args: SearchArgs): Promise<SearchResult> {
     }
   }
   const out = toSearchResult(raw);
-  console.log(`[catalog] search_catalog ← ${out.products.length} products: ${summarizeProducts(out.products)}`);
+  const total = out.products.length;
+  out.products = out.products.filter(sellsOnShopify);
+  const dropped = total - out.products.length;
+  console.log(`[catalog] search_catalog ← ${out.products.length} products${dropped ? ` (${dropped} non-Shopify dropped)` : ""}: ${summarizeProducts(out.products)}`);
   return out;
 }
 

@@ -44,6 +44,10 @@ test("unknown stock, missing prices, and unsafe checkout URLs fail closed", asyn
   const url = product(); url.variants![0].checkout_url = "javascript:alert(1)";
   await assert.rejects(checkCheckout(gift, async () => url), /checkout link/);
 });
+test("external merchants are never offered a checkout link", async () => {
+  const p = product(); p.variants![0].source = "external"; delete p.variants![0].checkout_url;
+  await assert.rejects(checkCheckout(gift, async () => p), /isn’t sold through a Shopify store/);
+});
 test("unconfirmed gifts cannot be checked", async () => {
   await assert.rejects(checkCheckout({ ...gift, confirmation: undefined }), /not confirmed/);
 });

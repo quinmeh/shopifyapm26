@@ -4,7 +4,7 @@ import { getGift, saveGift } from "@/lib/store";
 import { put, take } from "@/lib/private-store";
 
 export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/checkout">) {
-  if (!sameOrigin(req)) return new Response("Invalid origin", { status: 403 });
+  if (!sameOrigin(req)) return Response.json({ error: "Please reload this page and try again." }, { status: 403 });
   const { id } = await ctx.params;
   const gift = await getGift(id);
   if (!gift) return Response.json({ error: "Not found" }, { status: 404 });

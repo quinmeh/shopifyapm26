@@ -21,7 +21,7 @@ const isSnapshot = (p: unknown): p is ProductSnapshot =>
   typeof (p as ProductSnapshot).title === "string" && typeof (p as ProductSnapshot).priceCents === "number";
 
 export async function POST(req: Request) {
-  if (!sameOrigin(req)) return new Response("Invalid origin", { status: 403 });
+  if (!sameOrigin(req)) return Response.json({ error: "Please reload this page and try again." }, { status: 403 });
   const ownerEmail = await giverEmail();
   let body: Body;
   try {

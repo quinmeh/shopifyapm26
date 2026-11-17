@@ -1,4 +1,4 @@
-import { getProduct, refundPolicyUrl } from "./catalog";
+import { getProduct, refundPolicyUrl, shopifyCheckoutUrl } from "./catalog";
 import type { Gift } from "./types";
 
 export type CheckoutCheck = {
@@ -21,11 +21,8 @@ export async function checkCheckout(gift: Gift, lookup = getProduct): Promise<Ch
   const amount = variant.price?.amount;
   const newCents = typeof amount === "number" && Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
   if (!soldOut && (newCents === null || variant.price?.currency !== "USD")) throw new Error("A current USD price could not be verified.");
-  let checkoutUrl: string | null = null;
-  if (!soldOut && variant.checkout_url) {
-    const url = new URL(variant.checkout_url);
-    if (url.protocol === "https:" && !url.username && !url.password) checkoutUrl = url.href;
-  }
+  if (!soldOut && variant.source && variant.source !== "shopify") throw new Error("This item isn’t sold through a Shopify store, so it can’t be bought here. Reopen the gift so they can choose another option.");
+  const checkoutUrl = soldOut ? null : shopifyCheckoutUrl(variant);
   if (!soldOut && !checkoutUrl) throw new Error("This shop did not provide a checkout link. Please try again later.");
   return { checkoutUrl, priceChanged: newCents !== null && newCents !== chosen.priceCents,
     oldCents: chosen.priceCents, newCents, soldOut, checkedAt: new Date().toISOString(),

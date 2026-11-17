@@ -28,7 +28,7 @@ export async function POST(req: Request) {
         ships_to: body.region ? { country: "US", region: body.region } : { country: "US" },
         price: { min: Math.round(body.priceCents * 0.85), max: Math.round(body.priceCents * 1.15) },
       },
-      pagination: { limit: 6 },
+      pagination: { limit: 10 }, // headroom: non-Shopify results are dropped
     });
 
     const candidates = result.products.filter((p) => p.id !== body.id).map(toSnapshot);
