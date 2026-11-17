@@ -1,6 +1,7 @@
 // Gift storage: Upstash Redis when env vars are present (Vercel), otherwise an
 // in-memory Map (local dev). The Map lives on globalThis so it survives HMR.
-import { Redis } from "@upstash/redis";
+import type { Redis } from "@upstash/redis";
+import { redisClient, redisConfig } from "./redis";
 import type { Gift } from "./types";
 
 const KEY = (id: string) => `gift:${id}`;
@@ -10,15 +11,14 @@ type MemStore = Map<string, Gift>;
 const g = globalThis as unknown as { __giftStore?: MemStore };
 
 function redisOrNull(): Redis | null {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    return Redis.fromEnv();
-  }
+  const client = redisClient();
+  if (client) return client;
   if (process.env.NODE_ENV === "production") throw new Error("Persistent gift storage must be configured.");
   return null;
 }
 
 export function storageMode(): "upstash" | "memory" {
-  return process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN ? "upstash" : "memory";
+  return redisConfig() ? "upstash" : "memory";
 }
 
 function mem(): MemStore {

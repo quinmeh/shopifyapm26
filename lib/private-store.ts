@@ -1,9 +1,9 @@
-import { Redis } from "@upstash/redis";
+import { redisClient } from "./redis";
 const globalStore = globalThis as unknown as { privateValues?: Map<string, { value: unknown; expires: number }>; privateSets?: Map<string, Set<string>> };
 const values = globalStore.privateValues ??= new Map();
 const sets = globalStore.privateSets ??= new Map();
 function redis() {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) return Redis.fromEnv();
+  const client = redisClient(); if (client) return client;
   if (process.env.NODE_ENV === "production") throw new Error("Persistent storage must be configured.");
   return null;
 }
