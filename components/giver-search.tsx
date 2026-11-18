@@ -177,7 +177,7 @@ export function GiverSearch() {
         <main key={step} className="stagger-children flex flex-1 flex-col gap-4 px-5 pb-4">
           {step === "photo" && (
             <>
-              <Heading title="Start from something they love" body="A photo of their taste finds real gifts from independent makers. Their windowsill, their mug, their bookshelf." />
+              <Heading title="Start from something they love" body="Show us a little of their world, and we’ll match it to gifts from small shops." />
               {fileInput}
               <button type="button" onClick={() => fileRef.current?.click()}
                 className={`press group flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-card bg-surface text-center ${photo ? "border-2 border-ink p-0" : "border border-dashed border-giver-input p-6 hover:border-ink"}`}>
