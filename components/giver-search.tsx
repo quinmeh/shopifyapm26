@@ -64,6 +64,7 @@ export function GiverSearch() {
   const [status, setStatus] = useState<Status>("loading");
   const [selected, setSelected] = useState<ProductSnapshot | null>(null);
   const [clearedByPhoto, setClearedByPhoto] = useState(false);
+  const refinements = useRef(0); // chip/filter/photo changes on the matches screen
 
   const fileRef = useRef<HTMLInputElement>(null);
   const searchReq = useRef(0); // stale-response guards
@@ -165,11 +166,11 @@ export function GiverSearch() {
     try { p = await fileToPhoto(file); setPhotoError(null); }
     catch { setPhotoError("Couldn’t open that photo. Try a different one, or a screenshot of it."); return; }
     setPhoto(p);
-    if (step === "matches") { setClearedByPhoto(true); start(p, occasion, budget, region); }
+    if (step === "matches") { refinements.current++; setClearedByPhoto(true); start(p, occasion, budget, region); }
   };
-  const onView = (v: View) => { setView(v); setClearedByPhoto(false); void search(v, photo, occasion, budget, region, visual); };
-  const onBudget = (b: Budget) => { setBudget(b); setClearedByPhoto(false); setVisual(null); void search(view, photo, occasion, b, region, null); };
-  const onLocation = (next: ShipLocation) => { setLocation(next); setClearedByPhoto(false); setVisual(null); void search(view, photo, occasion, budget, next.region ?? "", null); };
+  const onView = (v: View) => { refinements.current++; setView(v); setClearedByPhoto(false); void search(v, photo, occasion, budget, region, visual); };
+  const onBudget = (b: Budget) => { refinements.current++; setBudget(b); setClearedByPhoto(false); setVisual(null); void search(view, photo, occasion, b, region, null); };
+  const onLocation = (next: ShipLocation) => { refinements.current++; setLocation(next); setClearedByPhoto(false); setVisual(null); void search(view, photo, occasion, budget, next.region ?? "", null); };
 
   const loading = status === "loading";
   const fileInput = (
@@ -383,7 +384,10 @@ export function GiverSearch() {
           href={selected ? `/pick/${encodeURIComponent(selected.id)}` : undefined}
           onClick={() => {
             // Hand the pick page what it needs without a refetch (it falls back to get_product).
-            if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify({ product: selected, occasion, location }));
+            if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify({
+              product: selected, occasion, location,
+              source: { view: typeof view === "object" ? `cue:${view.label}` : view, position: products.findIndex((p) => p.id === selected.id) + 1, of: products.length, refinements: refinements.current },
+            }));
           }}>
           {selected && !loading ? `Choose ${selected.shortName}` : "Choose a gift"}
         </PrimaryButton>

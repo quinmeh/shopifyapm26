@@ -83,9 +83,11 @@ export async function POST(req: Request) {
     if (mode === "occasion") {
       // One call per theme, sequential (the client serializes for the 5 req/s limit).
       const lists: ProductSnapshot[][] = [];
-      for (const query of profile.queries) {
+      for (const [i, query] of profile.queries.entries()) {
         const r = await searchCatalog({ query, context: CONTEXT, filters, pagination: { limit: 5 } });
-        lists.push(r.products.map(toSnapshot));
+        // The section heading already names the occasion, so the tile shows just the theme.
+        const reason = profile.themes[i] ?? query;
+        lists.push(r.products.map((p) => ({ ...toSnapshot(p), reason })));
       }
       const products = diversify(interleave(lists), 6);
       const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
@@ -100,7 +102,7 @@ export async function POST(req: Request) {
         like: [{ image: { content_type: body.photo!.contentType || "image/jpeg", data: body.photo!.data } }],
         context: CONTEXT, filters, pagination: { limit: 18 },
       });
-      const all = r.products.map(toSnapshot);
+      const all = r.products.map((p) => ({ ...toSnapshot(p), reason: "Looks like your photo" }));
       const products = diversify(all, 6);
       const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
       const derived = cuesFromTitles(all.map((p) => ({ title: p.title, seller: p.sellerName })));
@@ -111,7 +113,7 @@ export async function POST(req: Request) {
     // cue: blend the photo cue with the occasion's gift vocabulary.
     const query = `${cue} ${profile.cueSuffix}`;
     const r = await searchCatalog({ query, context: CONTEXT, filters, pagination: { limit: 8 } });
-    const products = diversify(r.products.map(toSnapshot), 6);
+    const products = diversify(r.products.map((p) => ({ ...toSnapshot(p), reason: `Your photo · ${cue}` })), 6);
     const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
     console.log(`[api/search] cue "${query}" ← ${products.length}`);
     return Response.json({ products, makers, mode, query });

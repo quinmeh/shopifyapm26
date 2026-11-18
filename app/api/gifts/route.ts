@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 type Body = {
   notify?: boolean; // false = the giver opted out of the confirmation email
+  source?: { view?: unknown; position?: unknown; of?: unknown; refinements?: unknown }; // logging only
   recipientLabel?: string;
   occasion?: string;
   note?: string;
@@ -60,6 +61,12 @@ export async function POST(req: Request) {
   await saveGift(gift);
   await addMember(`browser-gifts:${gift.ownerBrowserId}`, gift.id);
   if (ownerEmail) await addMember(`giver-gifts:${digest(ownerEmail)}`, gift.id);
+  // Search-quality signal: where in the grid the pick came from and how much refining it took.
+  const src = body.source;
+  if (src && typeof src === "object") {
+    const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : "?");
+    console.log(`[signal] pick view=${String(src.view ?? "?").slice(0, 40)} position=${n(src.position)}/${n(src.of)} refinements=${n(src.refinements)}`);
+  }
   console.log(`[api/gifts] created ${gift.id}: "${gift.pick.title}" + ${approvedSwaps.length} swaps for ${recipientLabel} · notify ${body.notify === false ? "off" : ownerEmail ? "verified email" : "pending verification"}`);
   return Response.json({ id: gift.id }, { status: 201 });
 }

@@ -10,6 +10,7 @@ export type ProductSnapshot = {
   sellerUrl?: string;
   refundPolicyUrl?: string;
   rating?: { value: number; count: number };
+  reason?: string; // why search returned it, e.g. "Cozy candle" or "Looks like your photo" (giver tiles only)
 };
 
 export type Address = {

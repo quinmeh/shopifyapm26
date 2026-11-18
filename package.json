@@ -11,7 +11,8 @@
     "test:e2e": "playwright test",
     "demo:seed": "node --import tsx scripts/seed-demo.ts",
     "check:deploy": "node --import tsx scripts/check-deploy.ts",
-    "probe": "tsx --env-file=.env.local scripts/probe.ts"
+    "probe": "tsx --env-file=.env.local scripts/probe.ts",
+    "eval:search": "node --import tsx scripts/eval-search.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.9.0",

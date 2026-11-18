@@ -44,3 +44,9 @@ npm run demo:seed             # creates an unconfirmed gift from the live catalo
 ```
 
 Browser checks use installed Google Chrome. Screenshots and traces live in ignored `artifacts/` and `test-results/`. The seed command prints a recipient URL and saves a private automation cookie to `artifacts/demo-session.json` (do not share it). The seeded giver session belongs to the script; create a gift in your browser to test your own private tracking. Local gifts disappear when the server restarts. Use `npm run demo:seed -- --in-person` to seed the other delivery path.
+
+## Judging search quality
+
+- `npm run eval:search` runs a fixed set of occasions (plus any JPEGs in `artifacts/eval-photos/` and the sample photo) through `/api/search` and writes `artifacts/search-eval.md`. Mark each tile you would actually give with `[x]`; the share of marked tiles is the quality score. Set `EVAL_BASE_URL` to test production. Read-only.
+- Production logs tag quality signals with `[signal]`: which view and grid position each pick came from, how many chip/filter changes it took, and whether the recipient kept the pick or chose an alternative.
+

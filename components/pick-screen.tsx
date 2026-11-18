@@ -14,6 +14,9 @@ import {
 // Handed over from the search screen (sessionStorage); the product is refetched on a cold load.
 export type PickContext = {
   product: ProductSnapshot;
+  // How the giver found it, for quality logging: which view, grid position, and how many
+  // times they changed chips/filters/photo before picking.
+  source?: { view: string; position: number; of: number; refinements: number };
   occasion?: string;
   location?: { label: string; region?: string };
 };
@@ -120,7 +123,7 @@ export function PickScreen({ productId }: { productId: string }) {
       const r = await fetch("/api/gifts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: ctx.product, approvedSwaps: approved, deliveryMethod, notify }),
+        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: { ...ctx.product, reason: undefined }, approvedSwaps: approved, deliveryMethod, notify, source: ctx.source }),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Couldn’t create the gift.");
       const j = (await r.json()) as { id: string };

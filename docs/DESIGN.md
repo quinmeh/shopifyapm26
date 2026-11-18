@@ -127,7 +127,7 @@ Theme switch: wrap giver routes in `data-theme="giver"` and recipient routes in 
 | **Card** | White, 1px border (theme), radius 12. |
 | **Input / Select** | 40px, 1px input border, radius 8, 14px, always with a visible `<label>` (or `aria-label` where the design has none). |
 | **PhotoInputCard** | Card with 64×64 thumbnail, title (14/600) + source line (12), "Change" secondary button (36px). While searching: 2px ink border + spinner (`role="img" aria-label="Searching"`). |
-| **ProductTile** | Card: image area 104px tall (bg from product or neutral), then title (13/600), seller (12, text2), price (13/600). Selected: 2px ink border + 24px ink check badge top-right. Whole tile is a `<button>`. |
+| **ProductTile** | Card: image area 120px tall (bg from product or neutral), then a one-line reason it appeared (11/500 text2, small ink dot, e.g. "Cozy candle", "Looks like your photo", "Your photo · {cue}"), title (13/600), seller (12, text2), price (13/600). Selected: 2px ink border + 24px ink check badge top-right. Whole tile is a `<button>`. |
 | **SkeletonTile** | Same box as ProductTile, blocks use `shimmer`. |
 | **SwapMiniCard** | 3-column grid. Image 70px, title 11/600, seller 11. 26px round ✕ button top-right (`aria-label="Remove this alternative"`). Removed state: dashed border placeholder "Removed · Undo" (button). |
 | **NoteField** | Label "What made you think of her?" (15/650, same as every question label on screen 2), 3-row textarea, helper "She reads this first. It stays with the gift even if she swaps." |

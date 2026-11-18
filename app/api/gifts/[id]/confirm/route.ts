@@ -57,6 +57,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/conf
     await saveGift(saved);
   } finally { await take(lock); }
   await queueConfirmation(saved).catch(() => console.error("[notification] Could not queue; confirmation is saved."));
+  console.log(`[signal] recipient ${chosenProductId === gift.pick.id ? "kept" : "swapped"} of ${1 + gift.approvedSwaps.length} options`);
   console.log(`[api/gifts/${id}/confirm] ${chosenProductId === gift.pick.id ? "kept the pick" : "chose an alternative"} · variant ${variantId} · ${inPerson ? "give in person" : "ship to recipient"}`);
   return Response.json({ ok: true, confirmation: saved.confirmation });
 }

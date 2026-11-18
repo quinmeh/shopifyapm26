@@ -37,6 +37,12 @@ export function ProductTile({
         </span>
       )}
       <div className="flex flex-col gap-0.5 p-2.5">
+        {product.reason && (
+          <span className="mb-0.5 flex min-w-0 items-center gap-1 text-[11px] font-medium leading-[14px] text-giver-text2" title={`Why it’s here: ${product.reason}`}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink/60" />
+            <span className="truncate"><span className="sr-only">Why it’s here: </span>{product.reason}</span>
+          </span>
+        )}
         <span className="line-clamp-2 text-[13px] font-semibold leading-[17px]">{product.title}</span>
         <span className="truncate text-[12px] text-giver-text2">{product.sellerName ?? "Independent maker"}</span>
         <span className="tabular text-[13px] font-semibold">{formatCents(product.priceCents)}</span>
