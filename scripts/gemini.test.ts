@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { photoReader, readPhotoWithGemini } from "../lib/gemini";
 
-const input = { system: "s", mediaType: "image/jpeg", data: "AAAA", occasion: "A birthday" };
+const input = { system: "s", images: [{ mediaType: "image/jpeg", data: "AAAA", label: "Photo 1" }], occasion: "A birthday" };
 const reply = (status: number, body: unknown) => (async () => new Response(typeof body === "string" ? body : JSON.stringify(body), { status })) as unknown as typeof fetch;
 const ok = (obj: unknown) => reply(200, { candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] }, finishReason: "STOP" }] });
 
@@ -17,8 +17,22 @@ test("sends the photo, schema and key, and returns cleaned cues", async () => {
   assert.match(sent!.url, /models\/m:generateContent$/);
   assert.equal((sent!.init.headers as Record<string, string>)["x-goog-api-key"], "k");
   const body = JSON.parse(sent!.init.body as string);
-  assert.equal(body.contents[0].parts[0].inline_data.data, "AAAA");
+  assert.equal(body.contents[0].parts[0].text, "Photo 1:");
+  assert.equal(body.contents[0].parts[1].inline_data.data, "AAAA");
   assert.equal(body.generationConfig.responseMimeType, "application/json");
+});
+test("sends every photo with its label, in order", async () => {
+  let parts: { text?: string; inline_data?: { data: string } }[] = [];
+  const fetchImpl = (async (_url: string, init: RequestInit) => {
+    parts = JSON.parse(init.body as string).contents[0].parts;
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ read: "r", cues: [{ label: "a", query: "q" }] }) }] } }] }));
+  }) as unknown as typeof fetch;
+  const images = [
+    { mediaType: "image/jpeg", data: "ONE", label: "Photo 1" },
+    { mediaType: "image/jpeg", data: "TWO", label: "Photo 2 (the giver and recipient together: use only the setting, activity and objects)" },
+  ];
+  await readPhotoWithGemini({ ...input, images }, { apiKey: "k", fetchImpl });
+  assert.deepEqual(parts.map((p) => p.text ?? p.inline_data?.data), ["Photo 1:", "ONE", images[1].label + ":", "TWO", "The occasion: A birthday."]);
 });
 test("keeps at most five cues", async () => {
   const cues = Array.from({ length: 7 }, (_, i) => ({ label: `c${i}`, query: `q${i}` }));

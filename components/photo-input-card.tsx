@@ -1,41 +1,48 @@
-// PhotoInputCard (DESIGN.md §3): thumbnail + title/source + Change; searching state.
+// PhotoInputCard (DESIGN.md §3): the giver's photos on the matches screen, with Edit.
 import { SecondaryButton, Spinner } from "./ui";
 
-export type Photo = { previewUrl: string; title: string; data: string; contentType: string };
+// `people`: the giver marked it "Photo of us". It guides the AI read (setting, activity,
+// objects) but never the look-alike catalog search.
+export type Photo = { previewUrl: string; title: string; data: string; contentType: string; people?: boolean };
+export const MAX_PHOTOS = 3;
 
 export function PhotoInputCard({
-  photo,
+  photos,
   searching,
   onChange,
 }: {
-  photo: Photo | null;
+  photos: Photo[];
   searching: boolean;
   onChange: () => void;
 }) {
-  const border = searching && photo ? "border-2 border-ink" : "border border-giver-border";
+  const border = searching && photos.length ? "border-2 border-ink" : "border border-giver-border";
+  const title = photos.length === 0 ? "Add photos of what they love" : photos.length === 1 ? photos[0].title : `${photos.length} photos`;
+  const people = photos.filter((p) => p.people).length;
   return (
     <div className={`flex items-center gap-3 rounded-card bg-surface p-3 ${border}`}>
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-control bg-skeleton">
-        {photo && (
-          // eslint-disable-next-line @next/next/no-img-element -- local object URL
-          <img src={photo.previewUrl} alt="" className="h-full w-full object-cover" />
-        )}
+      <div className="relative h-16 w-16 shrink-0">
+        {photos.length === 0 && <div className="h-16 w-16 rounded-control bg-skeleton" />}
+        {photos.slice(0, MAX_PHOTOS).map((p, i) => (
+          // eslint-disable-next-line @next/next/no-img-element -- local data URL
+          <img key={p.previewUrl} src={p.previewUrl} alt=""
+            className="absolute h-14 w-14 rounded-control border-2 border-surface object-cover"
+            style={{ left: i * 4, top: i * 4, zIndex: MAX_PHOTOS - i, transform: `rotate(${(i - 1) * 4}deg)` }} />
+        ))}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-semibold">{photo ? photo.title : "Add a photo of something they love"}</p>
+        <p className="truncate text-[14px] font-semibold">{title}</p>
         <p className="flex items-center gap-1.5 text-[12px] text-giver-text2">
-          {photo ? (searching ? "New photo · searching" : "From your photos") : "Their windowsill, mug or bookshelf"}
-          {searching && photo && <Spinner />}
+          {photos.length ? (searching ? "New photos · searching" : people ? `Includes ${people === 1 ? "a photo" : "photos"} of you two` : "From your photos") : "Their windowsill, mug or bookshelf"}
+          {searching && photos.length > 0 && <Spinner />}
         </p>
       </div>
       <SecondaryButton onClick={onChange} className="!h-9 !w-auto shrink-0 px-3 text-[13px]">
-        {photo ? "Change" : "Choose photo"}
+        {photos.length ? "Edit" : "Add photos"}
       </SecondaryButton>
     </div>
   );
 }
 
-// Client-side resize to ≤1024px JPEG so the request body stays well under 1 MB.
 // createImageBitmap is fast but rejects some formats (e.g. HEIC on some iOS versions);
 // an <img> decode handles anything the browser can display. Orientation follows EXIF.
 async function decode(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; done: () => void }> {

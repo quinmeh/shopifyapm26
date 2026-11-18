@@ -36,7 +36,7 @@ const RESPONSE_SCHEMA = {
 };
 
 export async function readPhotoWithGemini(
-  input: { system: string; mediaType: string; data: string; occasion: string },
+  input: { system: string; images: { mediaType: string; data: string; label: string }[]; occasion: string },
   opts: { apiKey: string; model?: string; fetchImpl?: typeof fetch; timeoutMs?: number; retryDelaysMs?: number[]; budgetMs?: number },
 ): Promise<PhotoRead | PhotoReadFailure> {
   const model = opts.model || DEFAULT_GEMINI_MODEL;
@@ -55,7 +55,7 @@ export async function readPhotoWithGemini(
         contents: [{
           role: "user",
           parts: [
-            { inline_data: { mime_type: input.mediaType, data: input.data } },
+            ...input.images.flatMap((img) => [{ text: `${img.label}:` }, { inline_data: { mime_type: img.mediaType, data: img.data } }]),
             { text: input.occasion ? `The occasion: ${input.occasion}.` : "No occasion given." },
           ],
         }],

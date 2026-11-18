@@ -14,18 +14,19 @@ const UNAVAILABLE_COPY: Record<string, string> = {
   error: "Couldn’t read this photo, so the occasion leads.",
 };
 
-export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick, onRetry }: {
+export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick, onRetry, canLookAlike = true }: {
   analysis: AnalysisResult | null;
   loading: boolean;
   hasOccasion: boolean;
   view: View;
   onPick: (view: View) => void;
   onRetry?: () => void;
+  canLookAlike?: boolean; // false when every photo is a "Photo of us" (no look-alike search)
 }) {
   const isCue = (c: Cue) => typeof view === "object" && view.label === c.label;
   return (
     <section className="rounded-card border border-giver-border bg-surface p-3.5" aria-busy={loading}>
-      <h2 className="text-[14px] font-[650] leading-5">{loading ? "Reading the photo…" : "From the photo"}</h2>
+      <h2 className="text-[14px] font-[650] leading-5">{loading ? "Reading your photos…" : "From your photos"}</h2>
 
       {loading ? (
         <>
@@ -42,7 +43,7 @@ export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick, onR
           </p>
           <div className="stagger-children mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Steer the matches">
             {hasOccasion && <CueChip selected={view === "occasion"} onClick={() => onPick("occasion")}>For the occasion</CueChip>}
-            <CueChip selected={view === "photo"} onClick={() => onPick("photo")}>Looks like the photo</CueChip>
+            {canLookAlike && <CueChip selected={view === "photo"} onClick={() => onPick("photo")}>Looks like the photo</CueChip>}
             {(analysis?.cues ?? []).map((c) => (
               <CueChip key={c.label} selected={isCue(c)} onClick={() => onPick(c)}>{c.label}</CueChip>
             ))}

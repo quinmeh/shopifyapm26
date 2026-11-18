@@ -4,11 +4,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductSnapshot } from "@/lib/types";
 import { AnalysisCard, type AnalysisResult, type Cue, type View } from "./analysis-card";
-import { fileToPhoto, PhotoInputCard, type Photo } from "./photo-input-card";
+import { fileToPhoto, MAX_PHOTOS, PhotoInputCard, type Photo } from "./photo-input-card";
 import { LocationPicker, type ShipLocation } from "./location-picker";
 import { ProductTile, SkeletonTile } from "./product-tile";
 import {
-  AppHeader, BackButton, BowMark, Card, CheckIcon, Chip, CreditFooter, Field, PrimaryButton, ProgressDots, Screen,
+  AppHeader, BackButton, BowMark, Card, CheckIcon, XIcon, Chip, CreditFooter, Field, PrimaryButton, ProgressDots, Screen,
   SearchIcon, SecondaryButton, Spinner, TextLinkButton, inputCls,
 } from "./ui";
 
@@ -44,7 +44,10 @@ async function post(body: object, attempt = 0): Promise<SearchResponse> {
 
 export function GiverSearch() {
   const [step, setStep] = useState<Step>("photo");
-  const [photo, setPhoto] = useState<Photo | null>(null);
+  // Up to three photos. The first one not marked "Photo of us" drives the look-alike search;
+  // all of them go to the AI read.
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const photo = photos.find((p) => !p.people) ?? null;
   const [occasion, setOccasion] = useState(DEFAULT_OCCASION);
   const [budget, setBudget] = useState<Budget>(BUDGETS[1]);
   const [location, setLocation] = useState<ShipLocation>({ label: "Seattle, WA", region: "WA" });
@@ -124,12 +127,12 @@ export function GiverSearch() {
     }
   }, []);
 
-  const analyze = useCallback(async (p: Photo, occ: string) => {
+  const analyze = useCallback(async (list: Photo[], occ: string) => {
     const id = ++analyzeReq.current;
     setAnalyzing(true);
     setClaude(null);
     try {
-      const send = () => fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ photo: { contentType: p.contentType, data: p.data }, occasion: occ }) });
+      const send = () => fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ photos: list.map((p) => ({ contentType: p.contentType, data: p.data, people: !!p.people })), occasion: occ }) });
       const res = await send().catch(() => new Promise((r) => setTimeout(r, 900)).then(send));
       if (id !== analyzeReq.current) return;
       const out = res.ok ? ((await res.json()) as AnalysisResult) : { read: null, cues: [], unavailable: "error" };
@@ -139,18 +142,20 @@ export function GiverSearch() {
     } finally {
       if (id === analyzeReq.current) setAnalyzing(false);
     }
-  }, []);
+  }, [setClaude]); // state setters are stable; listed for the React compiler
 
   // Everything kicks off here: occasion search (grid) + photo read (cues) in parallel.
-  const start = (p: Photo | null, occ: string, b: Budget, reg: string) => {
-    const v: View = occ.trim() || !p ? "occasion" : "photo";
+  const start = (list: Photo[], occ: string, b: Budget, reg: string) => {
+    const lookAlike = list.find((p) => !p.people) ?? null;
+    const v: View = occ.trim() || !lookAlike ? "occasion" : "photo";
     setView(v);
     setOccasionRead(null);
-    if (p) { void analyze(p, occ); void readPhoto(p, occ, b, reg); }
-    else { setClaude(null); setCatalog(null); setVisual(null); }
-    void search(v, p, occ, b, reg, null);
+    if (list.length) void analyze(list, occ); else setClaude(null);
+    if (lookAlike) void readPhoto(lookAlike, occ, b, reg);
+    else { setCatalog(null); setVisual(null); }
+    void search(v, lookAlike, occ, b, reg, null);
   };
-  const findGifts = () => { setStep("reading"); setClearedByPhoto(false); start(photo, occasion, budget, region); };
+  const findGifts = () => { setStep("reading"); setClearedByPhoto(false); start(photos, occasion, budget, region); };
 
   const analysisLoading = analyzing || visualLoading;
   const readingDone = step === "reading" && !analysisLoading && status !== "loading";
@@ -161,22 +166,28 @@ export function GiverSearch() {
   }, [readingDone]);
 
   const [photoError, setPhotoError] = useState<string | null>(null);
-  const onPhotoFile = async (file: File | undefined) => {
-    if (!file) return;
-    let p: Photo;
-    try { p = await fileToPhoto(file); setPhotoError(null); }
-    catch { setPhotoError("Couldn’t open that photo. Try a different one, or a screenshot of it."); return; }
-    setPhoto(p);
-    if (step === "matches") { refinements.current++; setClearedByPhoto(true); start(p, occasion, budget, region); }
+  const onPhotoFiles = async (files: FileList | null) => {
+    const room = MAX_PHOTOS - photos.length;
+    const picked = Array.from(files ?? []).slice(0, Math.max(room, 0));
+    if (!picked.length) return;
+    const added: Photo[] = [];
+    let failed = 0;
+    for (const file of picked) {
+      try { added.push(await fileToPhoto(file)); } catch { failed++; }
+    }
+    setPhotoError(failed ? `Couldn’t open ${failed === 1 ? "one photo" : `${failed} photos`}. Try a different one, or a screenshot of it.` : null);
+    if (added.length) setPhotos((cur) => [...cur, ...added].slice(0, MAX_PHOTOS));
   };
+  const removePhoto = (i: number) => setPhotos((cur) => cur.filter((_, j) => j !== i));
+  const togglePeople = (i: number) => setPhotos((cur) => cur.map((p, j) => (j === i ? { ...p, people: !p.people } : p)));
   const onView = (v: View) => { refinements.current++; setView(v); setClearedByPhoto(false); void search(v, photo, occasion, budget, region, visual); };
   const onBudget = (b: Budget) => { refinements.current++; setBudget(b); setClearedByPhoto(false); setVisual(null); void search(view, photo, occasion, b, region, null); };
   const onLocation = (next: ShipLocation) => { refinements.current++; setLocation(next); setClearedByPhoto(false); setVisual(null); void search(view, photo, occasion, budget, next.region ?? "", null); };
 
   const loading = status === "loading";
   const fileInput = (
-    <input ref={fileRef} type="file" accept="image/*" className="sr-only" aria-label="Choose a photo"
-      onChange={(e) => void onPhotoFile(e.target.files?.[0])} />
+    <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" aria-label="Choose photos"
+      onChange={(e) => { void onPhotoFiles(e.target.files); e.target.value = ""; }} />
   );
 
   // ---------------- 1 · 2 · 3 — guided setup ----------------
@@ -194,20 +205,46 @@ export function GiverSearch() {
             <>
               <Heading title="Start from something they love" body="Show us a little of their world, and we’ll match it to gifts from small shops." />
               {fileInput}
-              <button type="button" onClick={() => fileRef.current?.click()}
-                className={`press group flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-card bg-surface text-center ${photo ? "border-2 border-ink p-0" : "border border-dashed border-giver-input p-6 hover:border-ink"}`}>
-                {photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- local data URL
-                  <img key={photo.previewUrl} src={photo.previewUrl} alt="" className="img-reveal h-full max-h-[360px] w-full object-cover" />
-                ) : (
-                  <>
-                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-giver-bg text-ink transition-transform duration-300 ease-out group-hover:-translate-y-1 group-hover:rotate-[-6deg]"><BowMark size={26} /></span>
-                    <span className="text-[15px] font-semibold">Add a photo</span>
-                    <span className="text-[13px] text-giver-text2">From your camera roll or a screenshot</span>
-                  </>
-                )}
-              </button>
-              {photo && <p className="text-center text-[13px] text-giver-text2">{photo.title} · <button type="button" className="underline underline-offset-[3px]" onClick={() => fileRef.current?.click()}>Change</button></p>}
+              {photos.length === 0 ? (
+                <button type="button" onClick={() => fileRef.current?.click()}
+                  className="press group flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-card border border-dashed border-giver-input bg-surface p-6 text-center hover:border-ink">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-giver-bg text-ink transition-transform duration-300 ease-out group-hover:-translate-y-1 group-hover:rotate-[-6deg]"><BowMark size={26} /></span>
+                  <span className="text-[15px] font-semibold">Add up to {MAX_PHOTOS} photos</span>
+                  <span className="text-[13px] text-giver-text2">Their shelf, their mug, a trip you took together</span>
+                </button>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div className="stagger-children grid grid-cols-2 gap-2.5">
+                    {photos.map((p, i) => (
+                      <div key={p.previewUrl} className="flex flex-col gap-1.5">
+                        <div className="relative aspect-square overflow-hidden rounded-card border border-giver-border bg-surface">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- local data URL */}
+                          <img src={p.previewUrl} alt="" className="img-reveal h-full w-full object-cover" />
+                          <button type="button" onClick={() => removePhoto(i)} aria-label={`Remove photo ${i + 1}`}
+                            className="press absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full border border-giver-border bg-surface text-ink hover:border-ink">
+                            <XIcon size={12} />
+                          </button>
+                        </div>
+                        <button type="button" aria-pressed={!!p.people} onClick={() => togglePeople(i)}
+                          className={`press flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[12px] font-medium ${p.people ? "bg-ink text-white" : "border border-giver-input bg-surface text-ink hover:border-ink"}`}>
+                          {p.people && <span className="pop flex"><CheckIcon size={11} /></span>}
+                          Photo of us
+                        </button>
+                      </div>
+                    ))}
+                    {photos.length < MAX_PHOTOS && (
+                      <button type="button" onClick={() => fileRef.current?.click()}
+                        className="press flex aspect-square flex-col items-center justify-center gap-1.5 rounded-card border border-dashed border-giver-input bg-surface text-[13px] font-medium hover:border-ink">
+                        <span className="text-[22px] leading-none">+</span>
+                        Add another
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[12px] leading-[17px] text-giver-text2">
+                    More photos, better read: we look for what they have in common. Mark any photo of the two of you as “Photo of us” and we’ll use only the setting and what you’re doing, never anyone’s face or looks. Photos are read by AI to suggest gift ideas and aren’t saved.
+                  </p>
+                </div>
+              )}
               {photoError && <p role="alert" className="fade-up text-center text-[13px] text-ink">{photoError}</p>}
             </>
           )}
@@ -257,8 +294,8 @@ export function GiverSearch() {
         <footer className="sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
           {step === "photo" && (
             <>
-              <PrimaryButton disabled={!photo} onClick={() => setStep("occasion")}>Continue</PrimaryButton>
-              <div className="flex justify-center"><TextLinkButton onClick={() => { setPhoto(null); setStep("occasion"); }}>Skip — describe them in words instead</TextLinkButton></div>
+              <PrimaryButton disabled={!photos.length} onClick={() => setStep("occasion")}>Continue</PrimaryButton>
+              <div className="flex justify-center"><TextLinkButton onClick={() => { setPhotos([]); setStep("occasion"); }}>Skip — describe them in words instead</TextLinkButton></div>
             </>
           )}
           {step === "occasion" && <PrimaryButton onClick={() => setStep("filters")}>Continue</PrimaryButton>}
@@ -280,9 +317,9 @@ export function GiverSearch() {
     const readFailed = !!analysis && cues.length === 0;
     const rows: { key: string; label: string; done: boolean; failed?: boolean }[] = [
       ...(hasOccasion ? [{ key: "occasion", label: occasionRead ?? "Thinking about the occasion", done: !loading || !!occasionRead }] : []),
-      ...(photo ? [{
+      ...(photos.length ? [{
         key: "photo", done: !analysisLoading, failed: readFailed,
-        label: analysisLoading ? "Looking at the photo" : readFailed ? "The photo didn’t point to a clear theme" : analysis?.read ?? "Looked at the photo",
+        label: analysisLoading ? (photos.length > 1 ? `Looking at your ${photos.length} photos` : "Looking at the photo") : readFailed ? (photos.length > 1 ? "The photos didn’t point to a clear theme" : "The photo didn’t point to a clear theme") : analysis?.read ?? "Looked at the photos",
       }] : []),
       ...cues.map((c) => ({ key: `cue:${c.label}`, label: `Found: ${c.label}`, done: true })),
       {
@@ -296,10 +333,11 @@ export function GiverSearch() {
         <main className="flex flex-1 flex-col items-center justify-center gap-6 px-5 pb-10" aria-live="polite">
           <span className="pop relative flex h-24 w-24 items-center justify-center">
             {!readingDone && <span aria-hidden="true" className="ring absolute inset-0 rounded-card bg-giver-border" />}
-            {photo ? (
+            {photos.length ? photos.map((p, i) => (
               // eslint-disable-next-line @next/next/no-img-element -- local data URL
-              <img src={photo.previewUrl} alt="" className="relative h-24 w-24 rounded-card border border-giver-border object-cover" />
-            ) : (
+              <img key={p.previewUrl} src={p.previewUrl} alt="" className="absolute h-24 w-24 rounded-card border-2 border-surface object-cover"
+                style={{ transform: `rotate(${(i - (photos.length - 1) / 2) * 8}deg) translateX(${(i - (photos.length - 1) / 2) * 14}px)`, zIndex: i }} />
+            )) : (
               <span className="relative flex h-24 w-24 items-center justify-center rounded-card border border-giver-border bg-surface text-ink"><BowMark size={40} /></span>
             )}
           </span>
@@ -331,10 +369,10 @@ export function GiverSearch() {
         {/* Static block: photo, cues, filters, section title. Only the grid below scrolls. */}
         <div className="flex shrink-0 flex-col gap-2.5">
           {fileInput}
-          <PhotoInputCard photo={photo} searching={loading && clearedByPhoto} onChange={() => fileRef.current?.click()} />
-          {photoError && <p role="alert" className="fade-up text-[13px] text-ink">{photoError}</p>}
-          {photo && <AnalysisCard analysis={analysis} loading={analysisLoading} hasOccasion={hasOccasion} view={view} onPick={onView}
-            onRetry={() => { void analyze(photo, occasion); void readPhoto(photo, occasion, budget, region); }} />}
+          <PhotoInputCard photos={photos} searching={loading && clearedByPhoto} onChange={() => setStep("photo")} />
+          {photos.length > 0 && <AnalysisCard analysis={analysis} loading={analysisLoading} hasOccasion={hasOccasion} view={view} onPick={onView}
+            canLookAlike={!!photo}
+            onRetry={() => { void analyze(photos, occasion); if (photo) void readPhoto(photo, occasion, budget, region); }} />}
           <div className="grid grid-cols-2 gap-2.5">
             <Field label="Budget" htmlFor="budget">
               <select id="budget" className={inputCls} value={budget.label}
@@ -358,9 +396,9 @@ export function GiverSearch() {
         {/* Scroll region */}
         <div className="-mx-5 mt-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pb-4">
           {status === "empty" ? (
-            <EmptyState photo={photo} budget={budget} location={location} occasion={occasion} view={view}
+            <EmptyState photo={photos.length > 0} budget={budget} location={location} occasion={occasion} view={view}
               onTryPhoto={() => fileRef.current?.click()} onWiden={() => onBudget(WIDE)}
-              onDescribe={() => { setPhoto(null); setClaude(null); setCatalog(null); setVisual(null); setStep("occasion"); }}
+              onDescribe={() => { setPhotos([]); setClaude(null); setCatalog(null); setVisual(null); setStep("occasion"); }}
               onOccasion={() => onView("occasion")} />
           ) : status === "error" ? (
             <Card className="p-4 text-center">
@@ -422,7 +460,7 @@ function ReadStep({ label, done, failed, delay = 0 }: { label: string; done: boo
 }
 
 function EmptyState({ photo, budget, location, occasion, view, onTryPhoto, onWiden, onDescribe, onOccasion }: {
-  photo: Photo | null; budget: Budget; location: ShipLocation; occasion: string; view: View;
+  photo: boolean; budget: Budget; location: ShipLocation; occasion: string; view: View;
   onTryPhoto: () => void; onWiden: () => void; onDescribe: () => void; onOccasion: () => void;
 }) {
   const cueLabel = typeof view === "object" ? view.label : null;
