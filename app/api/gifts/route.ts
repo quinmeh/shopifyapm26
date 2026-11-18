@@ -62,6 +62,7 @@ export async function POST(req: Request) {
   };
   // Store the photo first so the gift never claims a photo that failed to save.
   const photo = parseGiftPhoto(body.photo);
+  if (body.photo && !photo) console.warn("[api/gifts] photo rejected (not a JPEG or too large); gift created without it");
   if (photo) {
     try { await put(giftPhotoKey(gift.id), photo, GIFT_PHOTO_TTL); gift.hasPhoto = true; }
     catch (e) { console.error("[api/gifts] photo not saved:", (e as Error).message); }

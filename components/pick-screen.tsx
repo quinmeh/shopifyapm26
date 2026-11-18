@@ -22,9 +22,23 @@ export type PickContext = {
   occasion?: string;
   location?: { label: string; region?: string };
   about?: string; // the giver's private "what do they love" line; only offered as a note starting point
-  usPhoto?: { contentType: string; data: string }; // first "Photo of us"; sent only if the giver keeps it on
+  photos?: { contentType: string; data: string; people?: boolean }[]; // the giver's uploads; one may go on the note
 };
 export const pickKey = (id: string) => `gc:pick:${id}`;
+
+// Polaroids are small: re-encode to ≤720px so even busy phone photos stay well under the
+// server limit (a full-size 1024px upload could exceed it and be dropped).
+async function toPolaroidJpeg(base64: string): Promise<{ contentType: "image/jpeg"; data: string }> {
+  const img = new Image();
+  img.src = `data:image/jpeg;base64,${base64}`;
+  await img.decode();
+  const scale = Math.min(1, 720 / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(img.naturalWidth * scale);
+  canvas.height = Math.round(img.naturalHeight * scale);
+  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return { contentType: "image/jpeg", data: canvas.toDataURL("image/jpeg", 0.8).split(",")[1] };
+}
 // One label style for every question on this screen so the form reads as one column.
 const sectionLabel = "text-[15px] font-[650] leading-5 text-ink";
 const EMAIL_KEY = "twofold:giver-email"; // per-browser convenience only
@@ -39,7 +53,11 @@ export function PickScreen({ productId }: { productId: string }) {
   const [recipientLabel, setRecipientLabel] = useState("");
   const [note, setNote] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("ship_to_recipient");
-  const [includePhoto, setIncludePhoto] = useState(true); // only matters when there is a "Photo of us"
+  // Which uploaded photo goes on the note as a polaroid (null = none). Set once the context loads:
+  // a "Photo of us" is preselected; otherwise nothing is.
+  const [photoChoice, setPhotoChoice] = useState<number | null | undefined>(undefined);
+  const notePhotos = ctx?.photos ?? [];
+  const chosenPhoto = photoChoice === undefined ? (() => { const i = notePhotos.findIndex((p) => p.people); return i >= 0 ? i : null; })() : photoChoice;
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ id: string; url: string } | null>(null);
@@ -128,7 +146,7 @@ export function PickScreen({ productId }: { productId: string }) {
       const r = await fetch("/api/gifts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: { ...ctx.product, reason: undefined }, approvedSwaps: approved, deliveryMethod, notify, source: ctx.source, photo: includePhoto && ctx.usPhoto ? ctx.usPhoto : undefined }),
+        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: { ...ctx.product, reason: undefined }, approvedSwaps: approved, deliveryMethod, notify, source: ctx.source, photo: chosenPhoto !== null && notePhotos[chosenPhoto] ? await toPolaroidJpeg(notePhotos[chosenPhoto].data) : undefined }),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Couldn’t create the gift.");
       const j = (await r.json()) as { id: string };
@@ -314,19 +332,27 @@ export function PickScreen({ productId }: { productId: string }) {
             </button>
           )}
         </div>
-        {ctx?.usPhoto && (
-          <Card className="flex items-center gap-4 p-3.5">
-            <Polaroid src={`data:${ctx.usPhoto.contentType};base64,${ctx.usPhoto.data}`} caption="you two" tilt={-4} size={96}
-              className={`transition-opacity ${includePhoto ? "" : "opacity-40"}`} />
-            <label className="flex cursor-pointer items-start gap-2.5">
-              <input type="checkbox" checked={includePhoto} onChange={(e) => setIncludePhoto(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-ink" />
-              <span>
-                <span className="block text-[15px] font-[650] leading-5">Add this photo to their gift</span>
-                <span className="block pt-0.5 text-[13px] leading-[18px] text-giver-text2">
-                  {includePhoto ? "They’ll see it as a polaroid with your note. It’s saved only with this gift." : "It stays private and is only used to find gifts."}
-                </span>
-              </span>
-            </label>
+        {notePhotos.length > 0 && (
+          <Card className="flex flex-col gap-3 p-3.5">
+            <div>
+              <h2 className="text-[15px] font-[650] leading-5">Add a photo to your note · optional</h2>
+              <p className="pt-0.5 text-[13px] leading-[18px] text-giver-text2">
+                {chosenPhoto !== null ? "They’ll see it as a black-and-white polaroid tucked into your note. It’s saved only with this gift." : "Pick one of your photos, like one of you two. Unpicked photos stay private."}
+              </p>
+            </div>
+            <div className="flex items-end gap-3 overflow-x-auto pb-1 pt-2" role="group" aria-label="Photo for your note">
+              {notePhotos.map((p, i) => (
+                <button key={i} type="button" aria-pressed={chosenPhoto === i} aria-label={`Use photo ${i + 1}${p.people ? " (photo of us)" : ""}`}
+                  onClick={() => setPhotoChoice(chosenPhoto === i ? null : i)}
+                  className={`press shrink-0 rounded-[4px] p-1 ${chosenPhoto === i ? "ring-2 ring-ink" : "opacity-60 hover:opacity-100"}`}>
+                  <Polaroid src={`data:${p.contentType};base64,${p.data}`} caption={p.people ? "you two" : undefined} tilt={i % 2 ? 3 : -3} size={78} bw />
+                </button>
+              ))}
+              <button type="button" aria-pressed={chosenPhoto === null} onClick={() => setPhotoChoice(null)}
+                className={`press flex h-[96px] w-[70px] shrink-0 items-center justify-center rounded-[4px] border border-dashed text-[12px] font-medium ${chosenPhoto === null ? "border-ink text-ink" : "border-giver-input text-giver-text2"}`}>
+                No photo
+              </button>
+            </div>
           </Card>
         )}
         <fieldset disabled={creating} className="flex flex-col gap-2">

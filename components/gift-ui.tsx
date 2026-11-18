@@ -20,12 +20,20 @@ export function GiftCard({ children, className = "" }: { children: ReactNode; cl
 
 // The giver's note, set like a handwritten card: serif italic, a large clay quote mark,
 // and the giver's name signed underneath.
-export function NoteQuote({ note, giverName, className = "", style }: { note: string; giverName: string; className?: string; style?: React.CSSProperties }) {
+// `photo`: the giver's polaroid, tucked into the top-right corner with the note wrapping around it.
+export function NoteQuote({ note, giverName, className = "", style, photo }: {
+  note: string; giverName: string; className?: string; style?: React.CSSProperties;
+  photo?: { src: string; caption: string; onError?: () => void };
+}) {
   return (
     <figure className={`relative w-full rounded-card border border-gift-border bg-surface px-6 pb-5 pt-7 text-left ${className}`} style={style}>
+      {photo && (
+        <Polaroid src={photo.src} caption={photo.caption} onError={photo.onError} size={124} tilt={5} bw drop
+          className="float-right -mr-3 -mt-12 mb-2 ml-3" style={{ "--d": "650ms" } as React.CSSProperties} />
+      )}
       <span aria-hidden="true" className="font-display absolute -top-4 left-5 flex h-8 w-8 items-center justify-center rounded-full border border-gift-border bg-gift-bg text-[26px] leading-none text-clay">“</span>
       <blockquote className="font-note text-[19px] leading-[28px] text-gift-text">{note}</blockquote>
-      <figcaption className="flex items-center gap-2 pt-3 text-[13px] font-[550] text-clay">
+      <figcaption className="clear-none flex items-center gap-2 pt-3 text-[13px] font-[550] text-clay">
         <span aria-hidden="true" className="h-px w-6 bg-clay/40" />
         {giverName}
       </figcaption>
@@ -36,23 +44,24 @@ export function NoteQuote({ note, giverName, className = "", style }: { note: st
 // An instant photo: white frame, thicker bottom with a handwritten caption, slight tilt.
 // `drop` plays a small fall-into-place on mount (reveal screen).
 // Sized in px (`size` = frame width) because % padding resolves against the parent's width.
-export function Polaroid({ src, caption, size = 150, tilt = 4, drop = false, className = "", style, onError }: {
-  src: string; caption?: string; size?: number; tilt?: number; drop?: boolean; className?: string; style?: React.CSSProperties; onError?: () => void;
+export function Polaroid({ src, caption, size = 150, tilt = 4, drop = false, bw = false, className = "", style, onError }: {
+  src: string; caption?: string; size?: number; tilt?: number; drop?: boolean; bw?: boolean; className?: string; style?: React.CSSProperties; onError?: () => void;
 }) {
   const pad = Math.round(size * 0.07);
   return (
     <figure className={`${drop ? "polaroid-drop" : ""} shrink-0 rounded-[3px] border border-gift-border bg-surface shadow-[0_8px_22px_rgba(43,37,34,0.14)] ${className}`}
       style={{ "--tilt": `${tilt}deg`, transform: `rotate(${tilt}deg)`, width: size, padding: `${pad}px ${pad}px 0`, ...style } as React.CSSProperties}>
       {/* eslint-disable-next-line @next/next/no-img-element -- local data URL or same-origin photo */}
-      <img src={src} alt={caption ? `Photo: ${caption}` : "A photo from the giver"} onError={onError} className="aspect-square w-full bg-skeleton object-cover" />
+      <img src={src} alt={caption ? `Photo: ${caption}` : "A photo from the giver"} onError={onError} className={`aspect-square w-full bg-skeleton object-cover ${bw ? "[filter:grayscale(1)_contrast(1.08)_brightness(1.03)]" : ""}`} />
       <figcaption className="font-note truncate text-center leading-none text-gift-text" style={{ fontSize: Math.max(11, Math.round(size * 0.1)), padding: `${Math.round(size * 0.09)}px 0` }}>{caption ?? "\u00a0"}</figcaption>
     </figure>
   );
 }
 
-export function WhyCard({ note, giverName }: { note: string; giverName: string }) {
+export function WhyCard({ note, giverName, photoSrc }: { note: string; giverName: string; photoSrc?: string }) {
   return (
-    <div className="rounded-control bg-clay-wash p-3">
+    <div className="flow-root rounded-control bg-clay-wash p-3">
+      {photoSrc && <Polaroid src={photoSrc} size={68} tilt={4} bw className="float-right mb-1 ml-3" />}
       <p className="text-[12px] font-[650] text-clay">Why {giverName} picked this</p>
       <p className="font-note pt-1 text-[15px] leading-[21px] text-gift-text">{note}</p>
     </div>

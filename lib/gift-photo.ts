@@ -3,7 +3,7 @@
 // (not inside it) so gift reads stay small. Anyone with the gift link can view it, like the note.
 
 export const GIFT_PHOTO_TTL = 60 * 60 * 24 * 45; // outlives the 30-day gift TTL after a late update
-export const MAX_PHOTO_BASE64 = 400_000; // ≈300 KB JPEG; the client sends ≤1024px at q0.85
+export const MAX_PHOTO_BASE64 = 700_000; // ≈520 KB JPEG; the client sends ≤720px at q0.8 (~60–150 KB)
 export const giftPhotoKey = (giftId: string) => `gift-photo:${giftId}`;
 export type GiftPhoto = { contentType: "image/jpeg"; data: string };
 

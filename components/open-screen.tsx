@@ -169,7 +169,7 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
             <div className="stagger-children flex flex-col gap-2 p-3.5">
               <h1 className="text-[17px] font-[650] leading-[22px] text-gift-text">{chosen.title}</h1>
               <p className="text-[13px] text-gift-text2">From {chosen.sellerName ?? "an independent maker"}</p>
-              <WhyCard note={gift.note} giverName={giver} />
+              <WhyCard note={gift.note} giverName={giver} photoSrc={gift.hasPhoto ? `/api/gifts/${gift.id}/photo` : undefined} />
             </div>
           ) : (
             <div className="flex flex-col gap-1 p-3.5 text-center">

@@ -255,7 +255,7 @@ export function GiverSearch() {
                     )}
                   </div>
                   <p className="text-[12px] leading-[17px] text-giver-text2">
-                    More photos, better read: we look for what they have in common. Mark any photo of the two of you as “Photo of us” and we’ll use only the setting and what you’re doing, never anyone’s face or looks. Photos are read by AI to suggest gift ideas and aren’t saved, unless you choose to add your photo of us to their gift later.
+                    More photos, better read: we look for what they have in common. Mark any photo of the two of you as “Photo of us” and we’ll use only the setting and what you’re doing, never anyone’s face or looks. Photos are read by AI to suggest gift ideas and aren’t saved, unless you add one to your note later.
                   </p>
                 </div>
               )}
@@ -447,7 +447,7 @@ export function GiverSearch() {
             // Hand the pick page what it needs without a refetch (it falls back to get_product).
             if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify({
               product: selected, occasion, location, about: about.trim() || undefined,
-              usPhoto: (() => { const us = photos.find((p) => p.people); return us ? { contentType: us.contentType, data: us.data } : undefined; })(),
+              photos: photos.map((p) => ({ contentType: p.contentType, data: p.data, people: !!p.people })),
               source: { view: typeof view === "object" ? `cue:${view.label}` : view, position: products.findIndex((p) => p.id === selected.id) + 1, of: products.length, refinements: refinements.current },
             }));
           }}>
