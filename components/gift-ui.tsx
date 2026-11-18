@@ -33,6 +33,23 @@ export function NoteQuote({ note, giverName, className = "", style }: { note: st
   );
 }
 
+// An instant photo: white frame, thicker bottom with a handwritten caption, slight tilt.
+// `drop` plays a small fall-into-place on mount (reveal screen).
+// Sized in px (`size` = frame width) because % padding resolves against the parent's width.
+export function Polaroid({ src, caption, size = 150, tilt = 4, drop = false, className = "", style, onError }: {
+  src: string; caption?: string; size?: number; tilt?: number; drop?: boolean; className?: string; style?: React.CSSProperties; onError?: () => void;
+}) {
+  const pad = Math.round(size * 0.07);
+  return (
+    <figure className={`${drop ? "polaroid-drop" : ""} shrink-0 rounded-[3px] border border-gift-border bg-surface shadow-[0_8px_22px_rgba(43,37,34,0.14)] ${className}`}
+      style={{ "--tilt": `${tilt}deg`, transform: `rotate(${tilt}deg)`, width: size, padding: `${pad}px ${pad}px 0`, ...style } as React.CSSProperties}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- local data URL or same-origin photo */}
+      <img src={src} alt={caption ? `Photo: ${caption}` : "A photo from the giver"} onError={onError} className="aspect-square w-full bg-skeleton object-cover" />
+      <figcaption className="font-note truncate text-center leading-none text-gift-text" style={{ fontSize: Math.max(11, Math.round(size * 0.1)), padding: `${Math.round(size * 0.09)}px 0` }}>{caption ?? "\u00a0"}</figcaption>
+    </figure>
+  );
+}
+
 export function WhyCard({ note, giverName }: { note: string; giverName: string }) {
   return (
     <div className="rounded-control bg-clay-wash p-3">

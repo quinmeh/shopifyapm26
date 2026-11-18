@@ -27,6 +27,7 @@ export type GiftStatus = "sent" | "confirmed" | "completed";
 export type DeliveryMethod = "ship_to_recipient" | "give_in_person";
 
 export type Gift = {
+  hasPhoto?: boolean; // the giver added a "photo of us" (stored under gift-photo:{id})
   ownerEmail?: string; // server-side ownership; never sent to recipient views
   ownerBrowserId?: string; // hash of a separate browser credential, never the recipient link
   id: string; // nanoid(8)

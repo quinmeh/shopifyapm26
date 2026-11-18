@@ -6,6 +6,7 @@ import { formatCents } from "@/lib/catalog";
 import type { DeliveryMethod, ProductSnapshot } from "@/lib/types";
 import { SwapMiniCard } from "./swap-mini-card";
 import { GiverEmail } from "./giver-email";
+import { Polaroid } from "./gift-ui";
 import {
   BackButton, BowMark, Card, CheckIcon, Confetti, CreditFooter, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
   TextLinkButton, inputCls, stagger,
@@ -20,6 +21,7 @@ export type PickContext = {
   occasion?: string;
   location?: { label: string; region?: string };
   about?: string; // the giver's private "what do they love" line; only offered as a note starting point
+  usPhoto?: { contentType: string; data: string }; // first "Photo of us"; sent only if the giver keeps it on
 };
 export const pickKey = (id: string) => `gc:pick:${id}`;
 // One label style for every question on this screen so the form reads as one column.
@@ -36,6 +38,7 @@ export function PickScreen({ productId }: { productId: string }) {
   const [recipientLabel, setRecipientLabel] = useState("");
   const [note, setNote] = useState("");
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>("ship_to_recipient");
+  const [includePhoto, setIncludePhoto] = useState(true); // only matters when there is a "Photo of us"
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ id: string; url: string } | null>(null);
@@ -124,7 +127,7 @@ export function PickScreen({ productId }: { productId: string }) {
       const r = await fetch("/api/gifts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: { ...ctx.product, reason: undefined }, approvedSwaps: approved, deliveryMethod, notify, source: ctx.source }),
+        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: { ...ctx.product, reason: undefined }, approvedSwaps: approved, deliveryMethod, notify, source: ctx.source, photo: includePhoto && ctx.usPhoto ? ctx.usPhoto : undefined }),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Couldn’t create the gift.");
       const j = (await r.json()) as { id: string };
@@ -310,6 +313,21 @@ export function PickScreen({ productId }: { productId: string }) {
             </button>
           )}
         </div>
+        {ctx?.usPhoto && (
+          <Card className="flex items-center gap-4 p-3.5">
+            <Polaroid src={`data:${ctx.usPhoto.contentType};base64,${ctx.usPhoto.data}`} caption="you two" tilt={-4} size={96}
+              className={`transition-opacity ${includePhoto ? "" : "opacity-40"}`} />
+            <label className="flex cursor-pointer items-start gap-2.5">
+              <input type="checkbox" checked={includePhoto} onChange={(e) => setIncludePhoto(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-ink" />
+              <span>
+                <span className="block text-[15px] font-[650] leading-5">Add this photo to their gift</span>
+                <span className="block pt-0.5 text-[13px] leading-[18px] text-giver-text2">
+                  {includePhoto ? "They’ll see it as a polaroid with your note. It’s saved only with this gift." : "It stays private and is only used to find gifts."}
+                </span>
+              </span>
+            </label>
+          </Card>
+        )}
         <fieldset disabled={creating} className="flex flex-col gap-2">
           <legend className={`${sectionLabel} pb-1.5 pt-1`}>How would you like to give it?</legend>
           {([

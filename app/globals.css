@@ -230,3 +230,13 @@ body {
   animation: sheen 2.6s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) { .sheen { display: none; } }
+
+/* ---- Polaroid (components/gift-ui.tsx) ----
+   The one deliberate shadow in the app: a physical photo should look like it sits on the page. */
+@keyframes polaroid-drop {
+  0% { opacity: 0; transform: translateY(-28px) rotate(calc(var(--tilt, 4deg) * -2)) scale(1.06); }
+  60% { opacity: 1; transform: translateY(3px) rotate(calc(var(--tilt, 4deg) * 1.25)); }
+  100% { opacity: 1; transform: rotate(var(--tilt, 4deg)); }
+}
+.polaroid-drop { animation: polaroid-drop 700ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+

@@ -5,12 +5,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { RecipientGift } from "@/lib/types";
-import { GiftHeader, NoteQuote } from "./gift-ui";
+import { GiftHeader, NoteQuote, Polaroid } from "./gift-ui";
 import { Confetti, PrimaryButton, Screen, stagger } from "./ui";
 
 export function RevealScreen({ gift }: { gift: RecipientGift }) {
   const router = useRouter();
   const [opening, setOpening] = useState(false);
+  const [photoOk, setPhotoOk] = useState(true);
   const next = `/g/${gift.id}/open`;
 
   useEffect(() => { router.prefetch(next); }, [router, next]);
@@ -31,7 +32,14 @@ export function RevealScreen({ gift }: { gift: RecipientGift }) {
           <p className="rise text-[14px] font-[550] text-gift-text2" style={stagger(1, 90, 150)}>{gift.giverName} sent you something</p>
           <h1 className="rise font-display pt-1.5 text-[34px] font-semibold leading-[40px] text-gift-text" style={stagger(2, 90, 150)}>{gift.headline}</h1>
         </div>
-        <NoteQuote note={gift.note} giverName={gift.giverName} className="rise mt-2" style={stagger(3, 90, 150)} />
+        <div className="relative w-full">
+          {gift.hasPhoto && photoOk && (
+            <Polaroid src={`/api/gifts/${gift.id}/photo`} caption={`${gift.giverName} & you`} tilt={5} drop
+              onError={() => setPhotoOk(false)}
+              size={150} className="relative z-10 mx-auto -mb-6" style={{ "--d": "650ms" } as React.CSSProperties} />
+          )}
+          <NoteQuote note={gift.note} giverName={gift.giverName} className={`rise ${gift.hasPhoto && photoOk ? "pt-10" : "mt-2"}`} style={stagger(3, 90, 150)} />
+        </div>
       </main>
       <footer className="rise sticky bottom-0 px-5 pb-4 pt-3" style={stagger(4, 90, 150)}>
         <PrimaryButton onClick={open} aria-disabled={opening} aria-live="polite">{opening ? "Opening…" : "Open your gift"}</PrimaryButton>

@@ -12,6 +12,7 @@ export function toRecipientGift(gift: Gift): RecipientGift {
     pick: stripPrice(gift.pick),
     approvedSwaps: gift.approvedSwaps.map(stripPrice),
     headline: occasionProfile(gift.occasion ?? "").headline,
+    hasPhoto: !!gift.hasPhoto,
   };
 }
 

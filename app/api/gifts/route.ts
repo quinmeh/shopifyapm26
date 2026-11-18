@@ -1,7 +1,8 @@
 // Create a gift (BRIEF §3 G3). Returns { id } for the /g/[id] link.
 import { nanoid } from "nanoid";
 import { digest, ensureGiverBrowser, giverEmail, sameOrigin } from "@/lib/giver-auth";
-import { addMember } from "@/lib/private-store";
+import { GIFT_PHOTO_TTL, giftPhotoKey, parseGiftPhoto } from "@/lib/gift-photo";
+import { addMember, put } from "@/lib/private-store";
 import { saveGift } from "@/lib/store";
 import type { DeliveryMethod, Gift, ProductSnapshot } from "@/lib/types";
 
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 type Body = {
   notify?: boolean; // false = the giver opted out of the confirmation email
+  photo?: unknown; // optional "photo of us" for the recipient's polaroid (base64 JPEG)
   source?: { view?: unknown; position?: unknown; of?: unknown; refinements?: unknown }; // logging only
   recipientLabel?: string;
   occasion?: string;
@@ -58,6 +60,12 @@ export async function POST(req: Request) {
     approvedSwaps,
     status: "sent",
   };
+  // Store the photo first so the gift never claims a photo that failed to save.
+  const photo = parseGiftPhoto(body.photo);
+  if (photo) {
+    try { await put(giftPhotoKey(gift.id), photo, GIFT_PHOTO_TTL); gift.hasPhoto = true; }
+    catch (e) { console.error("[api/gifts] photo not saved:", (e as Error).message); }
+  }
   await saveGift(gift);
   await addMember(`browser-gifts:${gift.ownerBrowserId}`, gift.id);
   if (ownerEmail) await addMember(`giver-gifts:${digest(ownerEmail)}`, gift.id);
