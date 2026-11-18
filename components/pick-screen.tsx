@@ -18,6 +18,8 @@ export type PickContext = {
   location?: { label: string; region?: string };
 };
 export const pickKey = (id: string) => `gc:pick:${id}`;
+const EMAIL_KEY = "twofold:giver-email"; // per-browser convenience only
+const validEmail = (v: string) => v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 type SwapState = { status: "loading" | "ready" | "error"; items: ProductSnapshot[]; removed: string[] };
 
@@ -33,7 +35,27 @@ export function PickScreen({ productId }: { productId: string }) {
   const [created, setCreated] = useState<{ id: string; url: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
+  // Confirmation email: on by default. A verified browser needs nothing; otherwise the giver
+  // types an email and creating the link sends the one-tap verification link.
+  const [notify, setNotify] = useState(true);
+  const [notifyEmail, setNotifyEmail] = useState("");
+  const [sessionEmail, setSessionEmail] = useState<string | null | undefined>(undefined);
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [notifyError, setNotifyError] = useState<string | null>(null);
   const swapReq = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(async () => {
+      try { const saved = localStorage.getItem(EMAIL_KEY); if (saved && !cancelled) setNotifyEmail(saved); } catch { /* storage blocked */ }
+      try {
+        const r = await fetch("/api/auth/session", { cache: "no-store" });
+        const j = r.ok ? ((await r.json()) as { email: string | null }) : { email: null };
+        if (!cancelled) setSessionEmail(j.email);
+      } catch { if (!cancelled) setSessionEmail(null); }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // 1. Context: sessionStorage first, else get_product.
   useEffect(() => {
@@ -84,7 +106,8 @@ export function PickScreen({ productId }: { productId: string }) {
 
   const approved = swaps.items.filter((s) => !swaps.removed.includes(s.id));
   const oneOfAKind = swaps.status === "ready" && approved.length === 0;
-  const canCreate = !!ctx && swaps.status !== "loading" && note.trim().length > 0 && recipientLabel.trim().length > 0 && !creating;
+  const emailReady = !notify || !!sessionEmail || validEmail(notifyEmail.trim());
+  const canCreate = !!ctx && swaps.status !== "loading" && note.trim().length > 0 && recipientLabel.trim().length > 0 && emailReady && !creating;
 
   const create = async (): Promise<string | null> => {
     if (created) return created.id;
@@ -95,11 +118,12 @@ export function PickScreen({ productId }: { productId: string }) {
       const r = await fetch("/api/gifts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: ctx.product, approvedSwaps: approved, deliveryMethod }),
+        body: JSON.stringify({ recipientLabel: recipientLabel.trim(), occasion: ctx.occasion, note: note.trim(), pick: ctx.product, approvedSwaps: approved, deliveryMethod, notify }),
       });
       if (!r.ok) throw new Error((await r.json()).error ?? "Couldn’t create the gift.");
       const j = (await r.json()) as { id: string };
       const url = `${window.location.origin}/g/${j.id}`;
+      if (notify && !sessionEmail) await requestNotify(j.id, notifyEmail.trim());
       setCreated({ id: j.id, url });
       return j.id;
     } catch (e) {
@@ -107,6 +131,22 @@ export function PickScreen({ productId }: { productId: string }) {
       return null;
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Sends the verification link for this gift. The link itself never blocks sharing.
+  const requestNotify = async (giftId: string, email: string) => {
+    try { localStorage.setItem(EMAIL_KEY, email); } catch { /* storage blocked */ }
+    try {
+      const r = await fetch("/api/auth/request", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, giftId, returnTo: `/gift/${giftId}` }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setSentTo(email);
+    } catch (e) {
+      setNotifyError(e instanceof Error && e.message ? e.message : "Couldn’t send the verification email.");
     }
   };
 
@@ -268,6 +308,32 @@ export function PickScreen({ productId }: { productId: string }) {
           </label>)}
           <p className="text-[12px] text-giver-text2">This choice is saved when you create the link.</p>
         </fieldset>
+
+        {/* Notify: on unless the giver opts out. */}
+        <Card className="flex flex-col gap-2.5 p-3.5">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-ink" />
+            <span>
+              <span className="block text-[15px] font-[650]">Email me when they choose</span>
+              <span className="block pt-0.5 text-[13px] leading-[18px] text-giver-text2">
+                {notify ? "So you know the moment it’s time to finish the purchase." : "You can still check the gift’s status page any time."}
+              </span>
+            </span>
+          </label>
+          {notify && (sessionEmail ? (
+            <p className="fade-in flex items-center gap-1.5 text-[13px] font-medium text-success-text">
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-success text-white"><CheckIcon size={10} /></span>
+              We’ll email <span className="break-all">{sessionEmail}</span>
+            </p>
+          ) : sessionEmail === null && (
+            <div className="fade-in flex flex-col gap-1">
+              <label htmlFor="notify-email" className="text-[13px] font-medium text-giver-text2">Your email</label>
+              <input id="notify-email" type="email" autoComplete="email" inputMode="email" className={inputCls} value={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.value)} placeholder="you@example.com" />
+              <p className="text-[12px] text-giver-text2">We’ll send a one-tap link to confirm it’s you, then only email you about this gift.</p>
+            </div>
+          ))}
+        </Card>
       </main>}
 
       <section aria-label={created ? "Share your gift" : "Create your gift"} className={created ? "flex flex-1 flex-col gap-3 px-5 pb-4" : "sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3"}>
@@ -319,10 +385,11 @@ export function PickScreen({ productId }: { productId: string }) {
             <PrimaryButton onClick={() => void create()} disabled={!canCreate}>
               {creating ? "Creating…" : "Create gift link"}
             </PrimaryButton>
-            <p className="pt-2 text-center text-[12px] text-giver-text2">{createError ?? "Nothing is charged until they confirm."}</p>
+            <p className="pt-2 text-center text-[12px] text-giver-text2">{createError ?? (notify && !sessionEmail && notifyEmail.trim() && !validEmail(notifyEmail.trim()) ? "Check your email address, or turn off the email above." : notify && !sessionEmail && !notifyEmail.trim() ? "Add your email above to be notified, or turn it off." : "Nothing is charged until they confirm.")}</p>
           </>
         )}
-        {created && <GiverEmail giftId={created.id} />}
+        {created && notifyError && <p role="alert" className="text-[13px] text-giver-text2">Your link is ready, but the verification email didn’t send: {notifyError}</p>}
+        {created && <GiverEmail giftId={created.id} pendingEmail={sentTo ?? undefined} />}
         <CreditFooter />
       </section>
     </Screen>

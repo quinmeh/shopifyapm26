@@ -5,7 +5,8 @@ import { sendMail, type Mail } from "./email";
 
 type Job = { mail: Mail; createdAt: number; sent?: boolean };
 export async function queueConfirmation(gift: Gift) {
-  if (!gift.ownerEmail || !gift.confirmation) return;
+  if (!gift.confirmation) return;
+  if (!gift.ownerEmail) { console.log(`[notification] ${gift.id}: no verified giver email, confirmation email skipped`); return; }
   const key = `confirmation-${digest(`${gift.id}:${gift.confirmation.confirmedAt}`)}`;
   await put(`notification:${key}`, { createdAt: Date.now(), mail: { to: gift.ownerEmail,
     subject: "They picked their gift — finish the purchase",
@@ -26,6 +27,7 @@ async function deliver(key: string) {
   if (!await put(`notification-lock:${key}`, true, 30, true)) return;
   try {
     await sendMail(job.mail, key);
+    console.log(`[notification] ${key}: confirmation email accepted by provider`);
     await put(`notification:${key}`, { ...job, sent: true }, 86400 * 30);
     await removeMember("notifications", key);
   } catch { console.error("[notification] Email pending; scheduled retry required."); }

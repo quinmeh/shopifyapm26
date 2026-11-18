@@ -8,6 +8,7 @@ import type { DeliveryMethod, Gift, ProductSnapshot } from "@/lib/types";
 export const dynamic = "force-dynamic";
 
 type Body = {
+  notify?: boolean; // false = the giver opted out of the confirmation email
   recipientLabel?: string;
   occasion?: string;
   note?: string;
@@ -22,7 +23,6 @@ const isSnapshot = (p: unknown): p is ProductSnapshot =>
 
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return Response.json({ error: "Please reload this page and try again." }, { status: 403 });
-  const ownerEmail = await giverEmail();
   let body: Body;
   try {
     body = (await req.json()) as Body;
@@ -31,6 +31,8 @@ export async function POST(req: Request) {
   }
 
   if (!body || typeof body !== "object") return Response.json({ error: "Invalid request" }, { status: 400 });
+  // A verified browser session links the gift to that email (and its notification) unless the giver opted out.
+  const ownerEmail = body.notify === false ? null : await giverEmail();
   if (body.deliveryMethod !== undefined && body.deliveryMethod !== "ship_to_recipient" && body.deliveryMethod !== "give_in_person") {
     return Response.json({ error: "Choose how you would like to give this gift." }, { status: 400 });
   }
@@ -58,6 +60,6 @@ export async function POST(req: Request) {
   await saveGift(gift);
   await addMember(`browser-gifts:${gift.ownerBrowserId}`, gift.id);
   if (ownerEmail) await addMember(`giver-gifts:${digest(ownerEmail)}`, gift.id);
-  console.log(`[api/gifts] created ${gift.id}: "${gift.pick.title}" + ${approvedSwaps.length} swaps for ${recipientLabel}`);
+  console.log(`[api/gifts] created ${gift.id}: "${gift.pick.title}" + ${approvedSwaps.length} swaps for ${recipientLabel} · notify ${body.notify === false ? "off" : ownerEmail ? "verified email" : "pending verification"}`);
   return Response.json({ id: gift.id }, { status: 201 });
 }
