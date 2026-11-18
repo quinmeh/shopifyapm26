@@ -1,0 +1,63 @@
+import assert from "node:assert/strict";
+const base = "http://localhost:3000";
+const email = `giver-${Date.now()}@example.invalid`;
+async function post(path: string, body: unknown, cookie = "") {
+  return fetch(base + path, { method: "POST", headers: { Origin: base, Cookie: cookie, "Content-Type": "application/json" }, body: JSON.stringify(body), redirect: "manual" });
+}
+const get = (path: string, cookie = "") => fetch(base + path, { headers: { Cookie: cookie }, redirect: "manual" });
+async function main() {
+  const body = { recipientLabel: "your friend", note: "Guest-first email smoke test", pick: { id: "gid://shopify/p/test", title: "Test mug", priceCents: 4000, shortName: "the mug" } };
+  const created = await post("/api/gifts", body);
+  assert.equal(created.status, 201, "Gift creation must not require email verification");
+  const guestCookie = created.headers.get("set-cookie")!.split(";")[0];
+  assert.match(guestCookie, /^gc_browser=/); assert.match(created.headers.get("set-cookie")!, /HttpOnly/i);
+  const { id } = await created.json(); assert.equal(id.length, 24);
+  assert.equal((await (await get(`/api/gifts/${id}`, guestCookie)).json()).ownerEmail, undefined);
+  assert.equal((await get(`/gift/${id}`, guestCookie)).status, 200);
+  const guestList = await get("/gifts", guestCookie);
+  assert.equal(guestList.status, 200); assert.ok((await guestList.text()).includes(`/gift/${id}`));
+  assert.equal((await post(`/api/gifts/${id}/checkout`, {}, guestCookie)).status, 409);
+  assert.equal((await get(`/api/gifts/${id}`)).status, 403);
+  assert.equal((await post(`/api/gifts/${id}/checkout`, {})).status, 403);
+  assert.equal((await post(`/api/gifts/${id}/reopen`, {})).status, 403);
+  assert.ok([307, 308].includes((await get(`/gift/${id}`)).status));
+  assert.equal((await post("/api/auth/request", { email, giftId: id })).status, 403, "Recipient link alone cannot claim ownership");
+  const other = await post("/api/gifts", body);
+  const otherCookie = other.headers.get("set-cookie")!.split(";")[0];
+  assert.equal((await post("/api/auth/request", { email, giftId: id }, otherCookie)).status, 403);
+  const recipient = await (await get(`/api/gifts/${id}?for=recipient`)).json();
+  assert.ok(!JSON.stringify(recipient).includes("ownerBrowserId")); assert.ok(!JSON.stringify(recipient).includes("priceCents"));
+  const confirm = { chosenProductId: body.pick.id, variantId: "test-variant", address: { fullName: "Test Recipient", line1: "123 Private Test Street", city: "Seattle", region: "WA", postalCode: "98101" } };
+  assert.equal((await post(`/api/gifts/${id}/confirm`, confirm)).status, 200);
+  assert.ok(!(await (await get("/dev/mail")).text()).includes(`/gift/${id}`), "No notification before verified contact");
+  const requested = await post("/api/auth/request", { email, giftId: id, returnTo: `/gift/${id}` }, guestCookie);
+  assert.equal(requested.status, 200); assert.equal((await requested.json()).preview, true);
+  assert.equal((await post("/api/auth/request", { email, giftId: id }, guestCookie)).status, 429);
+  const inbox = await (await get("/dev/mail")).text();
+  const token = inbox.match(/auth\/verify\?token=([A-Za-z0-9_-]{43})/)?.[1]; assert.ok(token);
+  const page = await get(`/auth/verify?token=${token}`);
+  assert.equal(page.status, 200); assert.match(await page.text(), /name="referrer" content="strict-origin"/);
+  const rejected = await fetch(base + "/api/auth/verify", { method: "POST", headers: { Origin: "null" }, body: new URLSearchParams({ token }), redirect: "manual" });
+  assert.equal(rejected.status, 403);
+  // Simulate email verification on another device, without the creating browser's cookie.
+  const verify = () => fetch(base + "/api/auth/verify", { method: "POST", headers: { Origin: base }, body: new URLSearchParams({ token }), redirect: "manual" });
+  const verified = await verify(); assert.equal(verified.status, 303);
+  assert.ok(verified.headers.get("location")?.endsWith(`/gift/${id}`));
+  const emailCookie = verified.headers.get("set-cookie")!.split(";")[0];
+  assert.ok((await verify()).headers.get("location")?.includes("expired=1"));
+  assert.equal((await (await get(`/api/gifts/${id}`, emailCookie)).json()).ownerEmail, email);
+  assert.equal((await get(`/gift/${id}`, guestCookie)).status, 200);
+  const recovered = await get("/gifts", emailCookie);
+  assert.equal(recovered.status, 200); assert.ok((await recovered.text()).includes(`/gift/${id}`));
+  assert.equal((await post(`/api/gifts/${id}/confirm`, confirm)).status, 200);
+  const after = await (await get("/dev/mail")).text();
+  assert.ok(after.includes(`/gift/${id}`), "Late verification sends a catch-up notification");
+  assert.ok(!after.includes("123 Private Test Street"));
+  const safe = JSON.stringify(await (await get(`/api/gifts/${id}?for=recipient`)).json());
+  assert.ok(!safe.includes(email)); assert.ok(!safe.includes("ownerBrowserId"));
+  assert.equal((await fetch(base + "/api/auth/session", { method: "DELETE", headers: { Cookie: `${emailCookie}; ${guestCookie}`, Origin: base } })).status, 200);
+  assert.equal((await get(`/api/gifts/${id}`, emailCookie)).status, 403);
+  assert.equal((await get(`/api/gifts/${id}`, guestCookie)).status, 403);
+  console.log("Guest-first flow passed: immediate creation/tracking, isolated browser access, optional email claim, late notification, cross-device recovery, logout.");
+}
+main().catch(e => { console.error(e); process.exitCode = 1; });

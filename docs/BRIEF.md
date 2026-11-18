@@ -1,146 +1,191 @@
 # Build Brief: Gift Confirm (Shopify APM take-home prototype)
 
-> Build one milestone at a time. Do not skip ahead or add features not listed here.
+## How to use this file (for Quynh)
 
-## 1. What we're building (one paragraph)
+1. In the empty repo, create `docs/BRIEF.md` (this file) and `docs/DESIGN.md`.
+2. Add a real photo of something your sister loves as `scripts/sample.jpg`.
+3. Open Claude Code in the repo and paste:
+
+> Read docs/BRIEF.md and docs/DESIGN.md in full. Follow Section 9 "Rules for Claude Code". Execute Milestone 0 only, then stop and show me the output.
+
+4. After each milestone, review, then say "Go to Milestone N". Export the Claude Code transcript at the end for the submission.
+
+---
+
+## 1. Product in one paragraph
 
 A mobile-first web app for gift buying. **Thesis: the giver chooses the thought; the recipient finishes the details.**
-A giver with no idea uploads a photo of something the recipient loves → gets real, in-stock gift options from the
-Shopify Global Catalog → commits to one pick and approves up to 3 "swap" alternatives (any merchant, ±15% price) →
-sends a link with a personal note. The recipient opens the link on their phone, confirms size/color/address or swaps
-to an approved alternative. The giver then completes checkout with the final item's merchant.
-Differentiator: recipient confirm-or-swap **across every merchant in Shopify Catalog**, with no merchant setup.
+A giver with no idea uploads a photo of something the recipient loves and gets real, in-stock gifts from independent
+makers via the Shopify Global Catalog. She commits to one pick, approves up to 3 alternatives (any merchant, ±15% price),
+writes a one-line note, and sends a link. The recipient opens it on her phone, confirms size and address, or chooses one of
+the approved alternatives. The giver then completes checkout on the final item's merchant checkout.
+Differentiator: recipient confirm-or-choose **across every merchant in Shopify Catalog**, with no merchant setup.
 
-## 2. Product decisions (OWNER: Quynh — fill in before pasting)
+## 2. Product decisions (locked)
 
 | Decision | Choice |
 |---|---|
-| Demo story: giver → recipient relationship | `TODO` (e.g., "me → my sister in Seattle, new apartment") |
-| Recipient sees on open | `TODO`: item immediately **or** "You have a gift from ___" reveal screen first |
-| Prices on recipient's swap screen | `TODO`: hidden **or** shown |
-| "Why this fits" reasons | `TODO`: giver writes them **or** AI drafts, giver edits |
-| Budget default | `TODO` (e.g., $20–$80) |
+| Demo story | Quynh → her sister, who just moved into her first apartment in Seattle |
+| Hero entry | Photo of something she loves (visual / multimodal search). Text search is the fallback. Paste-a-link is out of scope unless time allows. |
+| Recipient sees on open | Reveal screen first (note, then "Open your gift") |
+| Prices on recipient screens | Hidden everywhere on recipient side |
+| "Why this fits" | Written by the giver. No AI drafting. |
+| Budget default | $25–$60 |
+| Swap range | Up to 3 giver-approved alternatives, ±15% of pick price, any merchant |
+| One-of-a-kind | If 0 alternatives: warn, never filter the item out |
+| Payment timing | Giver pays only after recipient confirms, on the merchant's own checkout |
+| Address copy | "Your address is saved for this gift and shared with the giver to finish checkout." |
+| Branding | DESIGN.md direction B. No Shopify logo. Plain-text credit "Built on Shopify Catalog + UCP". |
 
 ## 3. Scope
 
-**Build (real API):**
-- G1 Photo path (hero): upload photo + optional text hint → `search_catalog` with `catalog.like` image (+ `query` for multimodal). Text-only search as fallback when no photo.
-- G2 Pick one → swap check: one `search_catalog` with `like: [{id}]`, ±15% price, ships_to US. Giver sees up to 3 alternatives and can remove any. If 0 alternatives → show "One-of-a-kind: they can confirm details but can't swap." Never filter the item out.
-- G3 Personal note + recipient name → create gift → shareable link `/g/[id]`.
-- R1 Recipient page: giver's note, the pick, variant selection from `get_product` options (respect `available`/`exists` flags), shipping address form, OR choose one approved swap. Submit → gift status `confirmed`.
-- G4 Giver status page `/gift/[id]`: shows recipient's final choice. "Complete purchase" re-fetches the variant with `get_product` (price/stock freshness < 10 min), shows a price-change notice if different, then opens the variant's `checkout_url` (merchant's own checkout).
+**Build with real API calls**
+- **The occasion leads the search.** `lib/occasions.ts` maps the occasion text to a profile (home, couple, baby, birthday, thanks, milestone, comfort, general): 3–4 catalog text queries that tested well, a one-line read, and a cue suffix. `/api/search` occasion mode runs them and interleaves the results (candles, plants, throws for "first apartment" — not Space Needle souvenirs).
+- **The photo adds flavor.** Photo mode is a pure visual `search_catalog` (verified: any `query` sent with an image overrides the visual signal). Its 18 matches feed `lib/cues.ts`, which counts themes shared across ≥2 makers ("The photo points to space needle and seattle skyline"). Cues are chips: tapping one searches `"{cue} {profile.cueSuffix}"` ("seattle skyline home decor" → prints and tiles). "Looks like the photo" shows the visual matches themselves.
+- Optional upgrade: with `ANTHROPIC_API_KEY` set, `POST /api/analyze` reads the photo itself with Claude vision and its cues replace the catalog-derived ones.
+- Swap check on the pick → `search_catalog` with `like: [{id}]`
+- Recipient variant options → `get_product`
+- Re-check before checkout → `get_product`, then open variant `checkout_url`
 
-**Fake, and label in UI with a small "prototype" tag:**
-- Delivery date estimate after address entry (catalog has no delivery data).
-- Seller trust line: seller name + link to refund policy if present in `seller.links`.
+**Fake, and label in UI**
+- Delivery estimate ("Prototype estimate" chip)
+- Gift "completed" status (set manually when the giver clicks through)
 
-**Do NOT build:** accounts/auth, payments, email/SMS sending (just show a copy-link button), multiple recipients,
-reminders, auto-ship fallback, wishlists, real UCP `create_checkout` (requires signed/token tier — anonymous profiles get no checkout tools).
+**Do not build**
+Payments, SMS notification sending, multiple recipients, reminders, auto-ship fallback,
+thank-you reply, wishlists, real UCP `create_checkout` (needs signed/token tier; anonymous profiles get no checkout tools).
+
+User-approved extension: create and share first, with immediate private browser tracking. Optional passwordless giver email verification afterward enables `/gifts` recovery on other devices and confirmation notifications. Recipients remain account-free. See `EMAIL.md` for delivery configuration and local preview.
 
 ## 4. Stack
 
 - Next.js (App Router) + TypeScript + Tailwind. Deploy on Vercel.
-- All Shopify calls happen **server-side** in route handlers (`app/api/...`). Never call the catalog from the browser.
-- Storage: Upstash Redis via Vercel Marketplace (`@upstash/redis`), with an in-memory Map fallback when env vars are absent (local dev).
-- No AI SDK unless decision "AI drafts reasons" is chosen; if so, keep it to one server route.
+- Inter via `next/font/google`.
+- All Shopify calls **server-side** (route handlers). Never call the catalog from the browser.
+- Storage: Upstash Redis (`@upstash/redis`) via Vercel Marketplace; in-memory `Map` fallback when env vars are missing.
+- No component library. Tailwind + the tokens in DESIGN.md §2.
 
-## 5. Shopify Global Catalog client (verified against shopify.dev docs, Nov 2026)
+## 5. Shopify Global Catalog client (verified against shopify.dev, Nov 2026)
 
-- Endpoint: `POST https://catalog.shopify.com/api/ucp/mcp` (JSON-RPC 2.0, `method: "tools/call"`). No API key for anonymous use.
-- Every call includes the agent profile:
-  `params.arguments.meta["ucp-agent"].profile = process.env.UCP_PROFILE_URL`
-  Default for dev: `https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json`
-- Tool args go in `params.arguments.catalog`. Response is in `result.structuredContent` (handle SSE `data:` lines too).
-- Rate limit: 5 req/s shared across tools. Call sequentially; respect `Retry-After` on 429.
-- Prices are minor units (cents).
+- Endpoint: `POST https://catalog.shopify.com/api/ucp/mcp` (JSON-RPC 2.0, `"method": "tools/call"`). No API key for anonymous use.
+- Every call includes the agent profile at `params.arguments.meta["ucp-agent"].profile = process.env.UCP_PROFILE_URL`.
+- Tool arguments go in `params.arguments.catalog`. Response: `result.structuredContent` (also handle SSE `data:` lines).
+- Rate limit: 5 req/s shared across `search_catalog`, `get_product`, `lookup_catalog`. Call sequentially; on 429 respect `Retry-After`.
+- Prices are minor units (cents). Treat price/availability as stale after 10 minutes.
 
 ```jsonc
-// search_catalog — photo (multimodal)
-{ "query": "for her new apartment",
+// Photo search (multimodal). Drop "query" for pure visual search.
+{ "query": "Her first apartment in Seattle",
   "like": [{ "image": { "content_type": "image/jpeg", "data": "<base64>" } }],
   "context": { "address_country": "US", "intent": "buying a gift" },
-  "filters": { "ships_to": { "country": "US" }, "price": { "min": 2000, "max": 8000 },
+  "filters": { "ships_to": { "country": "US", "region": "WA" },
+               "price": { "min": 2500, "max": 6000 },
                "rating": { "variant": { "min": 4, "min_count": 5 } } },
   "pagination": { "limit": 6 } }
 
-// search_catalog — swap check
+// Swap check: products similar to the pick
 { "like": [{ "id": "gid://shopify/p/..." }],
-  "filters": { "ships_to": { "country": "US" }, "price": { "min": <base*0.85>, "max": <base*1.15> } },
-  "pagination": { "limit": 5 } }   // drop the pick itself from results
+  "filters": { "ships_to": { "country": "US", "region": "WA" },
+               "price": { "min": <round(base*0.85)>, "max": <round(base*1.15)> } },
+  "pagination": { "limit": 6 } }   // remove the pick itself; keep 3; prefer distinct sellers
 
-// get_product — variants for recipient
+// Variant options for recipient
 { "id": "gid://shopify/p/...", "selected": [{ "name": "Size", "label": "M" }] }
-
-// lookup_catalog — paste-a-link (secondary, only if time allows)
-{ "ids": ["https://some-shop.myshopify.com/products/..."] }  // unresolved → messages[].code "not_found"
 ```
 
-Useful response fields: product `id, title, url, media, options, price_range, rating`; variant `id, title, price,
-checkout_url, availability.status, options, seller{name,url,links}`.
+Fields used: product `id, title, url, media[0].url, options[].values[].{label,available,exists}, price_range, rating{value,count}`;
+variant `id, title, price, checkout_url, availability.status, options, seller{name,url,links}`.
 
-If the `rating` filter shape above is rejected, remove it and continue (log the error).
+If a filter shape is rejected (e.g. `rating`), log it, drop that filter, and continue. Don't invent fields.
+
+**Verified Nov 2026:** the `rating` filter is accepted but starves results on both image and text searches — a Seattle-skyline photo returned eSIMs and coffee with it, Seattle skyline prints without it; "space needle" returned punch-needle kits with it, Space Needle ornaments and models without it. The app sends no rating filter and shows ratings on tiles instead. `like` accepts exactly one entry (image or id). `context.intent` wording has no measurable effect on visual results.
 
 ## 6. Data model
 
 ```ts
+type ProductSnapshot = {
+  id: string; title: string; shortName: string;          // shortName: "the stoneware planter"
+  imageUrl?: string; priceCents: number;
+  sellerName?: string; sellerUrl?: string; refundPolicyUrl?: string;
+  rating?: { value: number; count: number };
+};
+
 type Gift = {
-  id: string;                 // short nanoid, used in /g/[id]
+  id: string;                     // nanoid(8)
   createdAt: string;
-  giverName: string;
-  recipientName: string;
+  giverName: string;              // "Quynh"
+  recipientLabel: string;         // "your sister" (giver-side copy)
+  occasion?: string;              // drives "For your new place"
   note: string;
-  reasons?: string;           // "why this fits"
+  deliveryMethod?: "ship_to_recipient" | "give_in_person"; // Defaults to direct shipping for legacy gifts; fixed at creation.
   pick: ProductSnapshot;
-  approvedSwaps: ProductSnapshot[];   // 0–3
-  oneOfAKind: boolean;        // true when approvedSwaps is empty
+  approvedSwaps: ProductSnapshot[];       // 0–3
   status: "sent" | "confirmed" | "completed";
   confirmation?: {
-    chosenProductId: string;  // pick or a swap
-    variantId: string;
-    variantTitle: string;
-    address: { name: string; line1: string; city: string; region: string; postalCode: string; country: "US" };
+    chosenProductId: string;
+    variantId: string; variantTitle: string;
+    address?: { fullName?: string; line1: string; line2?: string; city: string; region: string; postalCode: string; country: "US" }; // Address and fullName required on new direct-shipping confirmations; omitted for in-person gifts.
     confirmedAt: string;
   };
 };
-type ProductSnapshot = { id: string; title: string; imageUrl?: string; priceCents: number;
-  sellerName?: string; sellerUrl?: string; refundPolicyUrl?: string; url?: string };
 ```
 
-## 7. Routes
+## 7. Routes ↔ screens (DESIGN.md §4)
 
-| Route | Purpose |
+| Route | Screen |
 |---|---|
-| `/` | Giver: upload photo (client-side resize to ≤ 1024px JPEG before base64, keeps body < 1 MB) + hint + budget → results grid |
-| `/pick/[productId]` | Giver: pick detail, swap check, remove swaps, note, recipient name → create gift |
-| `/gift/[id]` | Giver: share link, status, then "Complete purchase" after confirmation |
-| `/g/[id]` | Recipient (mobile-first): note, pick, variants, address, swap option, confirm |
-| `POST /api/search` | photo/text search |
-| `POST /api/swaps` | swap check for a product |
-| `GET /api/product/[id]` | get_product passthrough (variants/options) |
-| `POST /api/gifts`, `GET /api/gifts/[id]`, `POST /api/gifts/[id]/confirm` | gift store |
-| `POST /api/gifts/[id]/checkout` | re-fetch variant, return `{checkoutUrl, priceChanged, oldPrice, newPrice}` |
+| `/` | 1 · Start from a photo (+ states 1a loading, 1b no matches) |
+| `/pick/[productId]` | 2 · Safety net + note → creates gift → shows link + Copy |
+| `/g/[id]` | 3 · Reveal |
+| `/g/[id]/open` | 4 · Love it or choose another (4a sheet is a state here) |
+| `/g/[id]/done` | 5 · All set |
+| `/gift/[id]` | 6 · She chose (+ waiting, price-changed, sold-out states) |
 
-## 8. Milestones (stop after each and show me the result)
+| API route | Does |
+|---|---|
+| `POST /api/search` | photo/text search → products |
+| `POST /api/swaps` | swap check for a product id + price |
+| `GET /api/product/[id]` | `get_product` passthrough (options, variants) |
+| `POST /api/gifts` | create gift |
+| `GET /api/gifts/[id]` | read gift (recipient view strips prices) |
+| `POST /api/gifts/[id]/confirm` | save recipient choice; idempotent |
+| `POST /api/address-search` | US street-address lookup for a valid gift link; fills street, city, state and ZIP |
+| `POST /api/gifts/[id]/checkout` | re-fetch final variant → `{ checkoutUrl, priceChanged, oldCents, newCents, soldOut }` |
 
-- **M0 – Probe (15 min):** scaffold Next.js app; add `lib/catalog.ts` client; add `scripts/probe.ts` that runs a text search, a photo search on `scripts/sample.jpg`, a swap check, and `lookup_catalog` on one product URL. Print titles, prices, sellers, counts. **Acceptance:** real products print. If photo search fails or results are poor, stop and tell me — the hero path may change.
-- **M1 – Giver search (30 min):** `/` with photo upload + hint + results grid using real data.
-- **M2 – Pick + swaps + create gift (30 min):** `/pick/[productId]`, swap check, remove-swap, one-of-a-kind state, note, create gift → link.
-- **M3 – Recipient page (30 min):** `/g/[id]` mobile layout, variant picker from options, address form, swap choice, confirm.
-- **M4 – Giver completion (15 min):** `/gift/[id]` status + re-fetch + price-change notice + open `checkout_url`.
-- **M5 – Fakes + polish + deploy (20 min):** delivery estimate + seller trust line (labeled "prototype"), seed a demo gift, deploy to Vercel, test recipient link on a real phone.
+Recipient-facing responses must not include prices.
+
+## 8. Milestones (stop after each; show a 3-line summary: works / faked / broke)
+
+- **M0 · Probe (15 min).** Scaffold Next.js + Tailwind with DESIGN.md tokens. Add `lib/catalog.ts`. Add `scripts/probe.ts`: photo search on `scripts/sample.jpg`, text search, swap check on result #1, `get_product` on result #1. Print titles, prices, sellers, option names, image URLs, timings. **Stop.** If photo results look poor, say so plainly — the hero path may change.
+- **M1 · Screen 1 + states (35 min).** Photo upload (client resize to ≤1024px JPEG), occasion (600ms debounce), budget, ships-to, results grid, selection, 1a loading, 1b empty, stale-response guard.
+- **M2 · Screen 2 (30 min).** Pick card, swap check, remove/undo, one-of-a-kind, note, create gift, share link + Copy.
+- **M3 · Screens 3, 4, 4a, 5 (40 min).** Reveal, item + WhyCard, option pills from `get_product` (sold out disabled), address with validation, bottom sheet with blurred backdrop, confirm, done.
+- **M4 · Screen 6 (20 min).** Status, waiting state, re-check, price-changed and sold-out states, open `checkout_url`.
+- **M5 · Polish + deploy (20 min).** Seed one demo gift, verify mobile layout at 390px, deploy to Vercel, open the recipient link on a real phone.
 
 ## 9. Rules for Claude Code
 
-- Keep it small and readable. No component libraries beyond Tailwind. No tests beyond the probe script.
+- Read DESIGN.md before building any UI. Use its tokens, components, copy and states exactly; don't restyle.
+- Build one milestone at a time. Don't start the next until told.
+- Don't add features outside §3. If something seems necessary, ask first.
 - Don't invent API fields. If a field is missing in real responses, handle it gracefully and tell me.
-- Don't add features outside Section 3. If something seems needed, ask first.
-- Log every catalog request/response summary to the server console (useful for the demo).
-- After each milestone, give me a 3-line summary: what works, what's faked, what broke.
+- No Shopify logo, no Shop Pay button art, no Shop purple. Plain-text credit only.
+- Accessibility per DESIGN.md §6. Real buttons/links/labels.
+- Log each catalog call (tool, ms, result count) to the server console.
+- Keep code small and readable. Components in `components/`, catalog client in `lib/catalog.ts`, store in `lib/store.ts`.
+- Commit at the end of each milestone with a clear message.
 
-## 10. Env vars
+## 10. Env
 
 ```
 UCP_PROFILE_URL=https://shopify.dev/ucp/agent-profiles/examples/2026-08-25/valid-with-capabilities.json
-UPSTASH_REDIS_REST_URL=        # optional locally
-UPSTASH_REDIS_REST_TOKEN=      # optional locally
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+NEXT_PUBLIC_GIVER_NAME=Quynh
+ANTHROPIC_API_KEY=            # photo read (Screen 1c); optional — step degrades gracefully without it
 ```
+
+## 11. Reflection notes (for the demo's last 45 seconds, not for building)
+
+- Weakest part: photo-search quality is unverified at scale; delivery estimate is faked; checkout is a permalink, not full UCP checkout.
+- With more time: signed/token profile → real UCP `create_checkout` so the recipient's address never touches the giver's device; Sign in with Shop for one-tap recipient address; auto-ship fallback if the link isn't opened; ship as a Shop Mini.

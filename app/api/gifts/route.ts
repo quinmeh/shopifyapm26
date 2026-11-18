@@ -1,0 +1,81 @@
+// Create a gift (BRIEF §3 G3). Returns { id } for the /g/[id] link.
+import { nanoid } from "nanoid";
+import { digest, ensureGiverBrowser, giverEmail, sameOrigin } from "@/lib/giver-auth";
+import { GIFT_PHOTO_TTL, giftPhotoKey, parseGiftPhoto } from "@/lib/gift-photo";
+import { addMember, put } from "@/lib/private-store";
+import { saveGift } from "@/lib/store";
+import type { DeliveryMethod, Gift, ProductSnapshot } from "@/lib/types";
+
+export const dynamic = "force-dynamic";
+
+type Body = {
+  notify?: boolean; // false = the giver opted out of the confirmation email
+  photo?: unknown; // optional "photo of us" for the recipient's polaroid (base64 JPEG)
+  source?: { view?: unknown; position?: unknown; of?: unknown; refinements?: unknown }; // logging only
+  recipientLabel?: string;
+  occasion?: string;
+  note?: string;
+  pick?: ProductSnapshot;
+  approvedSwaps?: ProductSnapshot[];
+  deliveryMethod?: DeliveryMethod;
+};
+
+const isSnapshot = (p: unknown): p is ProductSnapshot =>
+  !!p && typeof p === "object" && typeof (p as ProductSnapshot).id === "string" &&
+  typeof (p as ProductSnapshot).title === "string" && typeof (p as ProductSnapshot).priceCents === "number";
+
+export async function POST(req: Request) {
+  if (!sameOrigin(req)) return Response.json({ error: "Please reload this page and try again." }, { status: 403 });
+  let body: Body;
+  try {
+    body = (await req.json()) as Body;
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!body || typeof body !== "object") return Response.json({ error: "Invalid request" }, { status: 400 });
+  // A verified browser session links the gift to that email (and its notification) unless the giver opted out.
+  const ownerEmail = body.notify === false ? null : await giverEmail();
+  if (body.deliveryMethod !== undefined && body.deliveryMethod !== "ship_to_recipient" && body.deliveryMethod !== "give_in_person") {
+    return Response.json({ error: "Choose how you would like to give this gift." }, { status: 400 });
+  }
+  const note = (body.note ?? "").trim();
+  const recipientLabel = (body.recipientLabel ?? "").trim();
+  if (!isSnapshot(body.pick)) return Response.json({ error: "pick required" }, { status: 400 });
+  if (!note) return Response.json({ error: "note required" }, { status: 400 });
+  if (!recipientLabel) return Response.json({ error: "recipientLabel required" }, { status: 400 });
+  const approvedSwaps = (body.approvedSwaps ?? []).filter(isSnapshot).slice(0, 3);
+
+  const gift: Gift = {
+    id: nanoid(24),
+    ownerEmail: ownerEmail ?? undefined,
+    ownerBrowserId: await ensureGiverBrowser(),
+    createdAt: new Date().toISOString(),
+    giverName: process.env.NEXT_PUBLIC_GIVER_NAME || "Your friend",
+    recipientLabel,
+    occasion: (body.occasion ?? "").trim() || undefined,
+    note: note.slice(0, 500),
+    deliveryMethod: body.deliveryMethod ?? "ship_to_recipient",
+    pick: body.pick,
+    approvedSwaps,
+    status: "sent",
+  };
+  // Store the photo first so the gift never claims a photo that failed to save.
+  const photo = parseGiftPhoto(body.photo);
+  if (body.photo && !photo) console.warn("[api/gifts] photo rejected (not a JPEG or too large); gift created without it");
+  if (photo) {
+    try { await put(giftPhotoKey(gift.id), photo, GIFT_PHOTO_TTL); gift.hasPhoto = true; }
+    catch (e) { console.error("[api/gifts] photo not saved:", (e as Error).message); }
+  }
+  await saveGift(gift);
+  await addMember(`browser-gifts:${gift.ownerBrowserId}`, gift.id);
+  if (ownerEmail) await addMember(`giver-gifts:${digest(ownerEmail)}`, gift.id);
+  // Search-quality signal: where in the grid the pick came from and how much refining it took.
+  const src = body.source;
+  if (src && typeof src === "object") {
+    const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : "?");
+    console.log(`[signal] pick view=${String(src.view ?? "?").slice(0, 40)} position=${n(src.position)}/${n(src.of)} refinements=${n(src.refinements)}`);
+  }
+  console.log(`[api/gifts] created ${gift.id}: "${gift.pick.title}" + ${approvedSwaps.length} swaps for ${recipientLabel} · notify ${body.notify === false ? "off" : ownerEmail ? "verified email" : "pending verification"}`);
+  return Response.json({ id: gift.id }, { status: 201 });
+}
