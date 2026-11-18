@@ -337,7 +337,7 @@ export function PickScreen({ productId }: { productId: string }) {
             <div>
               <h2 className="text-[15px] font-[650] leading-5">Add a photo to your note · optional</h2>
               <p className="pt-0.5 text-[13px] leading-[18px] text-giver-text2">
-                {chosenPhoto !== null ? "They’ll see it as a black-and-white polaroid tucked into your note. It’s saved only with this gift." : "Pick one of your photos, like one of you two. Unpicked photos stay private."}
+                {chosenPhoto !== null ? "They’ll see it as a polaroid tucked into your note. It’s saved only with this gift." : "Pick one of your photos, like one of you two. Unpicked photos stay private."}
               </p>
             </div>
             <div className="flex items-end gap-3 overflow-x-auto pb-1 pt-2" role="group" aria-label="Photo for your note">
@@ -345,7 +345,7 @@ export function PickScreen({ productId }: { productId: string }) {
                 <button key={i} type="button" aria-pressed={chosenPhoto === i} aria-label={`Use photo ${i + 1}${p.people ? " (photo of us)" : ""}`}
                   onClick={() => setPhotoChoice(chosenPhoto === i ? null : i)}
                   className={`press shrink-0 rounded-[4px] p-1 ${chosenPhoto === i ? "ring-2 ring-ink" : "opacity-60 hover:opacity-100"}`}>
-                  <Polaroid src={`data:${p.contentType};base64,${p.data}`} caption={p.people ? "you two" : undefined} tilt={i % 2 ? 3 : -3} size={78} bw />
+                  <Polaroid src={`data:${p.contentType};base64,${p.data}`} caption={p.people ? "you two" : undefined} tilt={i % 2 ? 3 : -3} size={78} />
                 </button>
               ))}
               <button type="button" aria-pressed={chosenPhoto === null} onClick={() => setPhotoChoice(null)}
