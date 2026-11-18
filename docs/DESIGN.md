@@ -83,6 +83,7 @@ Defined in `app/globals.css`; components opt in by class. Stagger with `stagger(
 | `press` | Every button and selectable card: 0.975 scale on press, color transitions on hover. |
 | `img-reveal` | Merchant images fade in. |
 | `float`, `ring`, `lid-off`, `settle` | Reveal screen only: the closed gift floats, rings breathe out, the lid lifts on "Open your gift". |
+| Intro splash | Before giver step 1 (`components/intro-splash.tsx`): the bow's two loops draw out from one knot, the knot pops, the tails fall and the bow gives a small tug, then "Twofold" and "A gift made by two." rise and the splash lifts away (~2.7s). Once per browser session; tap, Skip, Esc or Enter ends it; skipped entirely with reduced motion. |
 | `Confetti` | Paper confetti in clay, ink and warm neutrals (never green). Only on the three gift moments: opening the gift, "You're all set", and "Your gift is ready to share". |
 
 Rules: entrances ≤ 520ms, interactions ≤ 200ms, the reveal open sequence ~900ms before navigating. `prefers-reduced-motion` collapses every animation to its end state, hides confetti and rings, and the reveal navigates immediately.

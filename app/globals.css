@@ -192,3 +192,21 @@ body {
   }
   .burst, .ring { display: none; }
 }
+
+/* ---- Intro splash (components/intro-splash.tsx) ---- */
+.intro-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 640ms cubic-bezier(0.65, 0, 0.35, 1) forwards; animation-delay: var(--d, 0ms); }
+@keyframes knot {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 1; transform: scale(1.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.intro-knot { opacity: 0; transform-box: fill-box; transform-origin: center; animation: knot 420ms var(--ease-spring) forwards; animation-delay: var(--d, 0ms); }
+/* After tying, the bow gives a small tug. */
+@keyframes tug {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  40% { transform: rotate(-6deg) scale(1.06); }
+  70% { transform: rotate(3deg) scale(0.98); }
+}
+.intro-bow { animation: tug 620ms var(--ease-out) 1050ms both; }
+@keyframes intro-out { to { opacity: 0; transform: scale(1.04) translateY(-12px); } }
+.intro-out { animation: intro-out 420ms var(--ease-out) forwards; pointer-events: none; }
