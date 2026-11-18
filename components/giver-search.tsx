@@ -94,7 +94,8 @@ export function GiverSearch() {
         out = r;
         setOccasionRead(r.occasion?.read ?? null);
       } else {
-        out = await post({ cue: v.label, ...common(b, reg, occ) });
+        // AI photo reads come with their own search phrase; catalog-derived cues don't.
+        out = await post({ cue: v.label, cueQuery: v.query, ...common(b, reg, occ) });
       }
       if (id !== searchReq.current) return;
       setProducts(out.products);

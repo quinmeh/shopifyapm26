@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 type Body = {
   mode?: "occasion" | "photo";
   cue?: string; // cue label
+  cueQuery?: string; // the photo read's own search phrase for this cue (Claude/Gemini), if any
   photo?: { contentType: string; data: string }; // base64, ≤1024px JPEG from the client
   occasion?: string;
   budget?: { min: number; max: number }; // cents
@@ -111,7 +112,10 @@ export async function POST(req: Request) {
     }
 
     // cue: blend the photo cue with the occasion's gift vocabulary.
-    const query = `${cue} ${profile.cueSuffix}`;
+    // Prefer the photo read's specific phrase ("brass candle snuffer wick trimmer");
+    // fall back to the label plus the occasion's gift vocabulary ("seattle skyline home decor").
+    const phrase = typeof body.cueQuery === "string" ? body.cueQuery.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+    const query = phrase || `${cue} ${profile.cueSuffix}`;
     const r = await searchCatalog({ query, context: CONTEXT, filters, pagination: { limit: 8 } });
     const products = diversify(r.products.map((p) => ({ ...toSnapshot(p), reason: `Your photo · ${cue}` })), 6);
     const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
