@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProductSnapshot } from "@/lib/types";
 import { AnalysisCard, type AnalysisResult, type Cue, type View } from "./analysis-card";
 import { fileToPhoto, MAX_PHOTOS, PhotoInputCard, type Photo } from "./photo-input-card";
-import { LocationPicker, type ShipLocation } from "./location-picker";
+import { hasLocation, LocationPicker, NO_LOCATION, type ShipLocation } from "./location-picker";
 import { MyGiftsLink } from "./my-gifts-link";
 import { ProductTile, SkeletonTile } from "./product-tile";
 import {
@@ -61,7 +61,7 @@ export function GiverSearch() {
   // What they love, in the giver's words. Private: it steers the search and never reaches the recipient.
   const [about, setAbout] = useState("");
   const [budget, setBudget] = useState<Budget>(BUDGETS[1]);
-  const [location, setLocation] = useState<ShipLocation>({ label: "Seattle, WA", region: "WA" });
+  const [location, setLocation] = useState<ShipLocation>(NO_LOCATION); // the giver must pick one
 
   // Photo read: Claude (optional, needs a key) or catalog-derived cues from the visual search.
   const [claude, setClaude] = useState<AnalysisResult | null>(null);
@@ -322,8 +322,8 @@ export function GiverSearch() {
           {step === "occasion" && <PrimaryButton onClick={() => setStep("filters")}>Continue</PrimaryButton>}
           {step === "filters" && (
             <>
-              <PrimaryButton onClick={findGifts}>{hasOccasion ? "Find gifts for the occasion" : "Find gifts"}</PrimaryButton>
-              <p className="pt-2 text-center text-[12px] text-giver-text2">Nothing is bought until they confirm.</p>
+              <PrimaryButton onClick={findGifts} disabled={!hasLocation(location)}>{hasOccasion ? "Find gifts for the occasion" : "Find gifts"}</PrimaryButton>
+              <p className="pt-2 text-center text-[12px] text-giver-text2">{hasLocation(location) ? "Nothing is bought until they confirm." : "Choose where it ships to continue."}</p>
             </>
           )}
           <CreditFooter />
