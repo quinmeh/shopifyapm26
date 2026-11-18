@@ -1,4 +1,5 @@
 import { storageMode } from "@/lib/store";
+import { photoReader } from "@/lib/gemini";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function GET() {
     productionReady,
     emailConfigured: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM),
     ucpProfileConfigured: Boolean(process.env.UCP_PROFILE_URL),
+    photoRead: photoReader(), // "claude" | "gemini" | "off" (catalog cues only)
     time: new Date().toISOString(),
   }, { status: ok ? 200 : 503 });
 }

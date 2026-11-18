@@ -1,7 +1,9 @@
 // Reads the giver's photo with Claude vision and returns 3–5 gift cues (what it saw)
 // plus a one-line taste read. The cues drive tappable themed searches on Screen 1c.
-// Degrades gracefully: without ANTHROPIC_API_KEY it returns no cues and a reason.
+// Provider: Claude when ANTHROPIC_API_KEY is set, else Gemini when GEMINI_API_KEY is set.
+// Degrades gracefully: with neither it returns no cues and a reason.
 import Anthropic from "@anthropic-ai/sdk";
+import { photoReader, readPhotoWithGemini } from "@/lib/gemini";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
@@ -39,14 +41,25 @@ export async function POST(req: Request) {
   }
   if (!body.photo?.data) return Response.json({ error: "photo required" }, { status: 400 });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.warn("[api/analyze] ANTHROPIC_API_KEY not set — skipping photo read");
+  const reader = photoReader();
+  if (reader === "off") {
+    console.warn("[api/analyze] no ANTHROPIC_API_KEY or GEMINI_API_KEY — skipping photo read");
     return Response.json({ cues: [], read: null, unavailable: "no_key" });
   }
 
   const mediaType = (body.photo.contentType || "image/jpeg") as "image/jpeg" | "image/png" | "image/webp" | "image/gif";
   const occasion = (body.occasion ?? "").trim();
   const started = Date.now();
+
+  if (reader === "gemini") {
+    const out = await readPhotoWithGemini(
+      { system: SYSTEM, mediaType, data: body.photo.data, occasion },
+      { apiKey: process.env.GEMINI_API_KEY!, model: process.env.GEMINI_MODEL },
+    );
+    if ("unavailable" in out) return Response.json({ cues: [], read: null, unavailable: out.unavailable });
+    console.log(`[api/analyze] gemini ok in ${Date.now() - started}ms → ${out.cues.map((c) => c.label).join(", ")}`);
+    return Response.json(out);
+  }
 
   try {
     const client = new Anthropic();
@@ -71,7 +84,7 @@ export async function POST(req: Request) {
       return Response.json({ cues: [], read: null, unavailable: "refused" });
     }
     const out = response.parsed_output;
-    console.log(`[api/analyze] ok in ${Date.now() - started}ms → ${out.cues.map((c) => c.label).join(", ")}`);
+    console.log(`[api/analyze] claude ok in ${Date.now() - started}ms → ${out.cues.map((c) => c.label).join(", ")}`);
     return Response.json(out);
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) {
