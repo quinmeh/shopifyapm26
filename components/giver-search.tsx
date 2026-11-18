@@ -358,15 +358,16 @@ export function GiverSearch() {
   const budgetOptions = budget === WIDE ? [...BUDGETS, WIDE] : BUDGETS;
 
   return (
-    <Screen theme="giver" fixed>
+    <Screen theme="giver">
       <div className="flex shrink-0 items-center gap-3 px-5 pt-[18px] pb-3">
         <BackButton onClick={() => setStep("filters")} />
         <span className="font-display text-[19px] font-semibold">Matches</span>
         <span className="ml-auto"><Chip>Prototype</Chip></span>
       </div>
 
-      <main className="flex min-h-0 flex-1 flex-col px-5">
-        {/* Static block: photo, cues, filters, section title. Only the grid below scrolls. */}
+      <main className="flex flex-1 flex-col px-5">
+        {/* The whole page scrolls: photo, cues and filters scroll away so the grid gets the screen.
+            Only the footer is pinned. */}
         <div className="flex shrink-0 flex-col gap-2.5">
           {fileInput}
           <PhotoInputCard photos={photos} searching={loading && clearedByPhoto} onChange={() => setStep("photo")} />
@@ -393,8 +394,8 @@ export function GiverSearch() {
           )}
         </div>
 
-        {/* Scroll region */}
-        <div className="-mx-5 mt-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pb-4">
+        {/* Grid */}
+        <div className="mt-2.5 flex flex-1 flex-col pb-4">
           {status === "empty" ? (
             <EmptyState photo={photos.length > 0} budget={budget} location={location} occasion={occasion} view={view}
               onTryPhoto={() => fileRef.current?.click()} onWiden={() => onBudget(WIDE)}
@@ -418,7 +419,7 @@ export function GiverSearch() {
         </div>
       </main>
 
-      <footer className="shrink-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
+      <footer className="sticky bottom-0 z-10 border-t border-giver-border bg-giver-bg/95 px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm">
         <PrimaryButton disabled={!selected || loading}
           href={selected ? `/pick/${encodeURIComponent(selected.id)}` : undefined}
           onClick={() => {
