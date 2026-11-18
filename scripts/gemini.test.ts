@@ -28,9 +28,21 @@ test("keeps at most five cues", async () => {
 test("maps provider failures to graceful reasons", async () => {
   assert.deepEqual(await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: reply(429, "quota") }), { unavailable: "rate_limited" });
   assert.deepEqual(await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: reply(400, "API key not valid. API_KEY_INVALID") }), { unavailable: "bad_key" });
-  assert.deepEqual(await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: reply(500, "boom") }), { unavailable: "error" });
+  assert.deepEqual(await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: reply(500, "boom"), retryDelaysMs: [] }), { unavailable: "error" });
   assert.deepEqual(await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: reply(200, { promptFeedback: { blockReason: "SAFETY" } }) }), { unavailable: "refused" });
   assert.deepEqual(await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: ok({ read: "r", cues: [] }) }), { unavailable: "refused" });
+});
+test("retries brief overloads, then succeeds", async () => {
+  let calls = 0;
+  const good = { candidates: [{ content: { parts: [{ text: JSON.stringify({ read: "r", cues: [{ label: "a", query: "q" }] }) }] } }] };
+  const fetchImpl = (async () => (++calls < 3 ? new Response("high demand", { status: 503 }) : new Response(JSON.stringify(good)))) as unknown as typeof fetch;
+  const out = await readPhotoWithGemini(input, { apiKey: "k", fetchImpl, retryDelaysMs: [1, 1] });
+  assert.equal(calls, 3);
+  assert.ok("cues" in out && out.cues[0].label === "a");
+  calls = 0;
+  const always = (async () => { calls++; return new Response("high demand", { status: 503 }); }) as unknown as typeof fetch;
+  assert.deepEqual(await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: always, retryDelaysMs: [1, 1] }), { unavailable: "error" });
+  assert.equal(calls, 3);
 });
 test("prefers Claude, then Gemini, then off", () => {
   const saved = { a: process.env.ANTHROPIC_API_KEY, g: process.env.GEMINI_API_KEY };

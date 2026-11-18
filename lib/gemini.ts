@@ -11,7 +11,7 @@ export type PhotoRead = z.infer<typeof PhotoRead>;
 export type PhotoReadFailure = { unavailable: "bad_key" | "rate_limited" | "refused" | "error" };
 
 // Override with GEMINI_MODEL if Google renames or retires this one.
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"; // 2.5-flash is closed to new keys (Nov 2026)
 
 // OpenAPI-subset schema Gemini uses for structured JSON output.
 const RESPONSE_SCHEMA = {
@@ -37,11 +37,15 @@ const RESPONSE_SCHEMA = {
 
 export async function readPhotoWithGemini(
   input: { system: string; mediaType: string; data: string; occasion: string },
-  opts: { apiKey: string; model?: string; fetchImpl?: typeof fetch; timeoutMs?: number },
+  opts: { apiKey: string; model?: string; fetchImpl?: typeof fetch; timeoutMs?: number; retryDelaysMs?: number[]; budgetMs?: number },
 ): Promise<PhotoRead | PhotoReadFailure> {
   const model = opts.model || DEFAULT_GEMINI_MODEL;
   const doFetch = opts.fetchImpl ?? fetch;
-  let res: Response;
+  const retryDelays = opts.retryDelaysMs ?? [700, 1600]; // 503/500 "high demand" spikes are usually brief
+  // Whole read, retries included, must finish within this budget; the giver is waiting on it.
+  const deadline = Date.now() + (opts.budgetMs ?? 15000);
+  let res!: Response;
+  for (let attempt = 0; ; attempt++) {
   try {
     res = await doFetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",
@@ -57,11 +61,18 @@ export async function readPhotoWithGemini(
         }],
         generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA, temperature: 0.4 },
       }),
-      signal: AbortSignal.timeout(opts.timeoutMs ?? 20000),
+      signal: AbortSignal.timeout(Math.max(1000, Math.min(opts.timeoutMs ?? 12000, deadline - Date.now()))),
     });
   } catch (e) {
     console.error("[gemini] request failed:", (e as Error).message);
     return { unavailable: "error" };
+  }
+  if ((res.status === 503 || res.status === 500) && attempt < retryDelays.length && deadline - Date.now() > retryDelays[attempt] + 3000) {
+    console.warn(`[gemini] HTTP ${res.status} (${model}), retry ${attempt + 1} in ${retryDelays[attempt]}ms`);
+    await new Promise((r) => setTimeout(r, retryDelays[attempt]));
+    continue;
+  }
+  break;
   }
 
   if (!res.ok) {
