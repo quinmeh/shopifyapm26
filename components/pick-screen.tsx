@@ -7,7 +7,7 @@ import type { DeliveryMethod, ProductSnapshot } from "@/lib/types";
 import { SwapMiniCard } from "./swap-mini-card";
 import { GiverEmail } from "./giver-email";
 import {
-  BackButton, BowMark, Card, CheckIcon, Confetti, CreditFooter, Field, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
+  BackButton, BowMark, Card, CheckIcon, Confetti, CreditFooter, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
   TextLinkButton, inputCls, stagger,
 } from "./ui";
 
@@ -18,6 +18,8 @@ export type PickContext = {
   location?: { label: string; region?: string };
 };
 export const pickKey = (id: string) => `gc:pick:${id}`;
+// One label style for every question on this screen so the form reads as one column.
+const sectionLabel = "text-[15px] font-[650] leading-5 text-ink";
 const EMAIL_KEY = "twofold:giver-email"; // per-browser convenience only
 const validEmail = (v: string) => v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
@@ -286,19 +288,20 @@ export function PickScreen({ productId }: { productId: string }) {
         </Card>
 
         {/* Who + note */}
-        <Field label="Who’s it for?" htmlFor="who">
+        <div className="flex flex-col gap-1.5 pt-1">
+          <label htmlFor="who" className={sectionLabel}>Who’s it for?</label>
           <input id="who" className={inputCls} value={recipientLabel} onChange={(e) => setRecipientLabel(e.target.value)}
             placeholder="your sister, a close friend, your dad…" disabled={!!created} />
-        </Field>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="note" className="text-[14px] font-[650]">What made you think of them?</label>
+        </div>
+        <div className="flex flex-col gap-1.5 pt-1">
+          <label htmlFor="note" className={sectionLabel}>What made you think of them?</label>
           <textarea id="note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} disabled={!!created} maxLength={500}
-            className="font-note w-full rounded-control border border-giver-input bg-surface px-3 py-2 text-[16px] leading-6 text-ink outline-none transition-colors focus:border-ink focus:ring-1 focus:ring-ink"
+            className="w-full rounded-control border border-giver-input bg-surface px-3 py-2 text-[14px] leading-5 text-ink outline-none transition-colors focus:border-ink focus:ring-1 focus:ring-ink"
             placeholder="Your new place deserves a proper view, even on grey days." />
           <p className="text-[12px] text-giver-text2">They read this first. It stays with the gift even if they choose another.</p>
         </div>
         <fieldset disabled={creating} className="flex flex-col gap-2">
-          <legend className="pb-2 text-[15px] font-[650]">How would you like to give it?</legend>
+          <legend className={`${sectionLabel} pb-1.5 pt-1`}>How would you like to give it?</legend>
           {([
             { value: "ship_to_recipient", title: "Ship directly to them", description: "They’ll add their delivery address when they confirm." },
             { value: "give_in_person", title: "Give it in person", description: "Ship it to yourself and hand it to them. Enter your address at merchant checkout." },

@@ -52,7 +52,7 @@ Rules:
 Fonts: **Inter** for UI and body (weights 400/500/600/700) and **Fraunces** (variable, SOFT + opsz axes) for the voice of the gift.
 
 - `font-display` (Fraunces 600, SOFT 60): the wordmark, Display and H1 headlines, screen titles in headers.
-- `font-note` (Fraunces italic, SOFT 100): the giver's note everywhere it appears (NoteQuote 19/28, WhyCard 15/21, the note textarea 16/24), so it reads like a handwritten card.
+- `font-note` (Fraunces italic, SOFT 100): the giver's note everywhere it appears (NoteQuote 19/28, WhyCard 15/21). The giver types the note in a normal Inter input; it becomes serif only where the recipient reads it., so it reads like a handwritten card.
 - Everything else stays Inter, including item titles, labels, prices and buttons.
 
 | Role | Size / line-height | Weight |
@@ -129,7 +129,7 @@ Theme switch: wrap giver routes in `data-theme="giver"` and recipient routes in 
 | **ProductTile** | Card: image area 104px tall (bg from product or neutral), then title (13/600), seller (12, text2), price (13/600). Selected: 2px ink border + 24px ink check badge top-right. Whole tile is a `<button>`. |
 | **SkeletonTile** | Same box as ProductTile, blocks use `shimmer`. |
 | **SwapMiniCard** | 3-column grid. Image 70px, title 11/600, seller 11. 26px round ✕ button top-right (`aria-label="Remove this alternative"`). Removed state: dashed border placeholder "Removed · Undo" (button). |
-| **NoteField** | Label "What made you think of her?" (14/650), 3-row textarea, helper "She reads this first. It stays with the gift even if she swaps." |
+| **NoteField** | Label "What made you think of her?" (15/650, same as every question label on screen 2), 3-row textarea, helper "She reads this first. It stays with the gift even if she swaps." |
 | **NoteQuote** (recipient) | `<figure>` letter card: 32px clay quote-mark badge overlapping the top-left edge, note in `font-note` 19/28, `<figcaption>` short clay rule + giver name in clay 13/550. |
 | **WhyCard** | Inside item card: `clay-wash` bg, radius 8, label "Why Quynh picked this" (12/650 clay), note 13/19. |
 | **AlsoLikedTag** | Top-left on item image: clay text on clay-tint, 12/600, pill radius 12. |
