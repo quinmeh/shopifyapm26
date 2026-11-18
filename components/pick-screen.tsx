@@ -7,8 +7,8 @@ import type { DeliveryMethod, ProductSnapshot } from "@/lib/types";
 import { SwapMiniCard } from "./swap-mini-card";
 import { GiverEmail } from "./giver-email";
 import {
-  BackButton, Card, CheckIcon, CreditFooter, Field, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
-  TextLinkButton, inputCls,
+  BackButton, BowMark, Card, CheckIcon, Confetti, CreditFooter, Field, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
+  TextLinkButton, inputCls, stagger,
 } from "./ui";
 
 // Handed over from the search screen (sessionStorage); the product is refetched on a cold load.
@@ -183,13 +183,13 @@ export function PickScreen({ productId }: { productId: string }) {
   return (
     <Screen theme="giver">
       <Header />
-      {!created && <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
+      {!created && <main className="stagger-children flex flex-1 flex-col gap-2.5 px-5 pb-4">
         {/* Pick card */}
         <Card className="flex gap-3 p-3">
           <div className="h-[116px] w-[116px] shrink-0 overflow-hidden rounded-control bg-skeleton">
             {p?.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- merchant CDN
-              <img src={p.imageUrl} alt="" className="h-full w-full object-cover" />
+              <img src={p.imageUrl} alt="" className="img-reveal h-full w-full object-cover" />
             )}
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -207,9 +207,9 @@ export function PickScreen({ productId }: { productId: string }) {
               </>
             ) : (
               <>
-                <div className="h-4 w-5/6 rounded bg-skeleton" />
-                <div className="h-3 w-1/2 rounded bg-skeleton" />
-                <div className="h-3 w-1/3 rounded bg-skeleton" />
+                <div className="shimmer h-4 w-5/6 rounded" />
+                <div className="shimmer h-3 w-1/2 rounded" />
+                <div className="shimmer h-3 w-1/3 rounded" />
               </>
             )}
           </div>
@@ -230,7 +230,7 @@ export function PickScreen({ productId }: { productId: string }) {
             <p className="text-[13px] text-giver-text2">Couldn’t check alternatives. <TextLinkButton onClick={() => p && checkSwaps(p, ctx?.location?.region)}>Try again</TextLinkButton></p>
           )}
           {swaps.status === "ready" && swaps.items.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="stagger-children grid grid-cols-3 gap-2">
               {swaps.items.map((s) => (
                 <SwapMiniCard key={s.id} product={s} removed={swaps.removed.includes(s.id)}
                   onRemove={() => setSwaps((w) => ({ ...w, removed: [...w.removed, s.id] }))}
@@ -253,7 +253,7 @@ export function PickScreen({ productId }: { productId: string }) {
         <div className="flex flex-col gap-1">
           <label htmlFor="note" className="text-[14px] font-[650]">What made you think of them?</label>
           <textarea id="note" rows={3} value={note} onChange={(e) => setNote(e.target.value)} disabled={!!created} maxLength={500}
-            className="w-full rounded-control border border-giver-input bg-surface px-3 py-2 text-[14px] leading-5 text-ink outline-none focus:border-ink"
+            className="font-note w-full rounded-control border border-giver-input bg-surface px-3 py-2 text-[16px] leading-6 text-ink outline-none transition-colors focus:border-ink focus:ring-1 focus:ring-ink"
             placeholder="Your new place deserves a proper view, even on grey days." />
           <p className="text-[12px] text-giver-text2">They read this first. It stays with the gift even if they choose another.</p>
         </div>
@@ -262,7 +262,7 @@ export function PickScreen({ productId }: { productId: string }) {
           {([
             { value: "ship_to_recipient", title: "Ship directly to them", description: "They’ll add their delivery address when they confirm." },
             { value: "give_in_person", title: "Give it in person", description: "Ship it to yourself and hand it to them. Enter your address at merchant checkout." },
-          ] as const).map(option => <label key={option.value} className={`flex cursor-pointer items-start gap-3 rounded-card border bg-surface p-3.5 ${deliveryMethod === option.value ? "border-ink ring-1 ring-ink" : "border-giver-border"}`}>
+          ] as const).map(option => <label key={option.value} className={`press flex cursor-pointer items-start gap-3 rounded-card border bg-surface p-3.5 ${deliveryMethod === option.value ? "border-ink ring-1 ring-ink" : "border-giver-border hover:border-giver-input"}`}>
             <input type="radio" name="delivery-method" value={option.value} checked={deliveryMethod === option.value} onChange={() => setDeliveryMethod(option.value)} className="mt-1 h-4 w-4 shrink-0 accent-ink" />
             <span><span className="block text-[14px] font-semibold">{option.title}</span><span className="block pt-1 text-[13px] text-giver-text2">{option.description}</span></span>
           </label>)}
@@ -271,15 +271,25 @@ export function PickScreen({ productId }: { productId: string }) {
       </main>}
 
       <section aria-label={created ? "Share your gift" : "Create your gift"} className={created ? "flex flex-1 flex-col gap-3 px-5 pb-4" : "sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3"}>
-        {created && <h1 className="text-[24px] font-bold leading-[30px]">Your gift is ready to share</h1>}
+        {created && (
+          <div className="flex flex-col items-center gap-3 pt-4 text-center">
+            <span className="relative flex h-20 w-20 items-center justify-center">
+              <span className="pop absolute inset-0 rounded-full bg-ink" />
+              <span className="pop relative text-white" style={stagger(1, 120)}><BowMark size={38} /></span>
+              <Confetti pieces={18} spread={140} delay={200} />
+            </span>
+            <h1 className="rise font-display text-[28px] font-semibold leading-[34px]" style={stagger(1, 90, 150)}>Your gift is ready to share</h1>
+            <p className="rise text-[14px] leading-5 text-giver-text2" style={stagger(2, 90, 150)}>Send the link to {recipientLabel.trim() || "them"}. They’ll open your note first.</p>
+          </div>
+        )}
         {created ? (
-          <Card className="flex flex-col gap-2 p-3">
+          <Card className="rise flex flex-col gap-2 p-3" style={stagger(3, 90, 150)}>
             <span className="text-[13px] font-[650]">Your gift link</span>
             <p className="text-[13px] text-giver-text2">{deliveryMethod === "give_in_person" ? "Give it in person · They’ll confirm their gift; you’ll ship it to yourself." : "Ship directly to them · They’ll confirm their gift and delivery address."}</p>
             <div className="flex items-center gap-2">
               <input readOnly value={created.url} onFocus={(e) => e.currentTarget.select()} aria-label="Gift link"
                 className={`${inputCls} tabular flex-1 text-[13px]`} />
-              <SecondaryButton onClick={copy} className="!h-10 !w-auto shrink-0 px-3 text-[13px]">{copied ? "Copied" : "Copy"}</SecondaryButton>
+              <SecondaryButton onClick={copy} className={`!h-10 !w-auto shrink-0 gap-1 px-3 text-[13px] ${copied ? "!border-ink" : ""}`}>{copied ? <><span className="pop flex"><CheckIcon size={12} /></span>Copied</> : "Copy"}</SecondaryButton>
             </div>
             <div className="grid grid-cols-4 gap-2" aria-label="Send gift link">
               <SecondaryButton onClick={() => void sendVia("text")} className="!h-11 !flex-col !gap-0.5 !px-1 !text-[12px]">
@@ -323,7 +333,7 @@ function Header() {
   return (
     <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
       <BackButton href="/" />
-      <span className="text-[15px] font-[650]">Your pick</span>
+      <span className="font-display text-[19px] font-semibold">Your pick</span>
     </div>
   );
 }

@@ -1,34 +1,38 @@
 // ProductTile + SkeletonTile (DESIGN.md §3).
 import { formatCents } from "@/lib/catalog";
 import type { ProductSnapshot } from "@/lib/types";
-import { CheckIcon } from "./ui";
+import { CheckIcon, stagger } from "./ui";
 
 export function ProductTile({
   product,
   selected,
   onSelect,
+  index = 0,
 }: {
   product: ProductSnapshot;
   selected: boolean;
   onSelect: () => void;
+  index?: number;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`relative flex flex-col overflow-hidden rounded-card bg-surface text-left ${
-        selected ? "border-2 border-ink" : "border border-giver-border"
+      style={stagger(Math.min(index, 8), 55)}
+      className={`rise press group relative flex flex-col overflow-hidden rounded-card bg-surface text-left ${
+        selected ? "border-2 border-ink" : "border border-giver-border hover:border-giver-input"
       }`}
     >
-      <div className="h-[104px] w-full bg-skeleton">
+      <div className="h-[120px] w-full overflow-hidden bg-skeleton">
         {product.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- arbitrary merchant CDNs
-          <img src={product.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+          <img src={product.imageUrl} alt="" loading="lazy"
+            className={`img-reveal h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04] ${selected ? "scale-[1.04]" : ""}`} />
         )}
       </div>
       {selected && (
-        <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white">
+        <span className="pop absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white">
           <CheckIcon size={13} />
         </span>
       )}
@@ -44,11 +48,11 @@ export function ProductTile({
 export function SkeletonTile() {
   return (
     <div className="flex flex-col overflow-hidden rounded-card border border-giver-border bg-surface" aria-hidden="true">
-      <div className="h-[104px] w-full bg-skeleton" />
+      <div className="shimmer h-[120px] w-full" />
       <div className="flex flex-col gap-2 p-2.5">
-        <div className="h-3 w-5/6 rounded bg-skeleton" />
+        <div className="shimmer h-3 w-5/6 rounded" />
         <div className="h-3 w-1/2 rounded bg-giver-bg" />
-        <div className="h-3 w-1/4 rounded bg-skeleton" />
+        <div className="shimmer h-3 w-1/4 rounded" />
       </div>
     </div>
   );

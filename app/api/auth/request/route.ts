@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   if (!await put(`ip-limit:${digest(ip)}`, true, 10, true)) return Response.json({ error: "Please wait before requesting another link." }, { status: 429 });
   try {
     const link = await issueLogin(email, safeReturn(body.returnTo), claim);
-    await sendMail({ to: email, subject: "Verify your email for Gift Confirm", text: `Verify your email and open your private gift tracking page:\n${link}\n\nThis link expires in 15 minutes and can be used once. You’ll receive an email when a recipient confirms your gift. If you didn’t request this, ignore it.` }, `login-${randomUUID()}`);
+    await sendMail({ to: email, subject: "Verify your email for Twofold", text: `Verify your email and open your private gift tracking page:\n${link}\n\nThis link expires in 15 minutes and can be used once. You’ll receive an email when a recipient confirms your gift. If you didn’t request this, ignore it.` }, `login-${randomUUID()}`);
     return Response.json({ ok: true, preview: previewMail() });
   } catch { return Response.json({ error: "Couldn’t send the verification email. Please try again." }, { status: 503 }); }
 }

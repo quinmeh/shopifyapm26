@@ -28,9 +28,9 @@ export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick }: {
 
       {loading ? (
         <>
-          <div className="mt-2 h-3 w-5/6 rounded bg-skeleton" />
+          <div className="shimmer mt-2 h-3 w-5/6 rounded" />
           <div className="mt-3 flex flex-wrap gap-1.5" aria-hidden="true">
-            {[120, 96, 84].map((w) => <span key={w} className="h-9 rounded-full bg-skeleton" style={{ width: w }} />)}
+            {[120, 96, 84].map((w) => <span key={w} className="shimmer h-9 rounded-full" style={{ width: w }} />)}
           </div>
         </>
       ) : (
@@ -38,7 +38,7 @@ export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick }: {
           <p className="pt-1 text-[14px] leading-5 text-giver-text2">
             {analysis && analysis.cues.length > 0 ? analysis.read : UNAVAILABLE_COPY[analysis?.unavailable ?? "thin"] ?? UNAVAILABLE_COPY.thin}
           </p>
-          <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Steer the matches">
+          <div className="stagger-children mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Steer the matches">
             {hasOccasion && <CueChip selected={view === "occasion"} onClick={() => onPick("occasion")}>For the occasion</CueChip>}
             <CueChip selected={view === "photo"} onClick={() => onPick("photo")}>Looks like the photo</CueChip>
             {(analysis?.cues ?? []).map((c) => (
@@ -54,8 +54,8 @@ export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick }: {
 function CueChip({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button type="button" aria-pressed={selected} onClick={onClick}
-      className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium ${selected ? "bg-ink text-white" : "border border-giver-input bg-surface text-ink"}`}>
-      {selected && <CheckIcon size={12} />}
+      className={`press flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium ${selected ? "bg-ink text-white" : "border border-giver-input bg-surface text-ink hover:border-ink"}`}>
+      {selected && <span className="pop flex"><CheckIcon size={12} /></span>}
       {children}
     </button>
   );

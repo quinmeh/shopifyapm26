@@ -3,15 +3,12 @@
 // SizePill, OptionRow, BottomSheet. Primary buttons stay ink; clay only for gift moments.
 import { useEffect, useRef, type ReactNode } from "react";
 import type { RecipientProduct } from "@/lib/types";
-import { GiftIcon, XIcon } from "./ui";
+import { Brand, XIcon } from "./ui";
 
 export function GiftHeader({ right }: { right?: ReactNode }) {
   return (
     <header className="flex items-center justify-between px-5 pt-[18px] pb-3">
-      <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-control bg-ink text-white"><GiftIcon size={15} /></span>
-        <span className="text-[15px] font-[650]">Gift Confirm</span>
-      </div>
+      <Brand />
       {right ?? <span className="text-[12px] text-gift-text2">No account needed</span>}
     </header>
   );
@@ -21,11 +18,17 @@ export function GiftCard({ children, className = "" }: { children: ReactNode; cl
   return <div className={`rounded-card border border-gift-border bg-surface ${className}`}>{children}</div>;
 }
 
-export function NoteQuote({ note, giverName }: { note: string; giverName: string }) {
+// The giver's note, set like a handwritten card: serif italic, a large clay quote mark,
+// and the giver's name signed underneath.
+export function NoteQuote({ note, giverName, className = "", style }: { note: string; giverName: string; className?: string; style?: React.CSSProperties }) {
   return (
-    <figure className="w-full rounded-card border border-gift-border bg-surface px-5 py-[18px]">
-      <blockquote className="text-[16px] leading-[25px] text-gift-text">“{note}”</blockquote>
-      <figcaption className="pt-2 text-[13px] font-[550] text-clay">— {giverName}</figcaption>
+    <figure className={`relative w-full rounded-card border border-gift-border bg-surface px-6 pb-5 pt-7 text-left ${className}`} style={style}>
+      <span aria-hidden="true" className="font-display absolute -top-4 left-5 flex h-8 w-8 items-center justify-center rounded-full border border-gift-border bg-gift-bg text-[26px] leading-none text-clay">“</span>
+      <blockquote className="font-note text-[19px] leading-[28px] text-gift-text">{note}</blockquote>
+      <figcaption className="flex items-center gap-2 pt-3 text-[13px] font-[550] text-clay">
+        <span aria-hidden="true" className="h-px w-6 bg-clay/40" />
+        {giverName}
+      </figcaption>
     </figure>
   );
 }
@@ -34,22 +37,22 @@ export function WhyCard({ note, giverName }: { note: string; giverName: string }
   return (
     <div className="rounded-control bg-clay-wash p-3">
       <p className="text-[12px] font-[650] text-clay">Why {giverName} picked this</p>
-      <p className="pt-1 text-[13px] leading-[19px] text-gift-text">{note}</p>
+      <p className="font-note pt-1 text-[15px] leading-[21px] text-gift-text">{note}</p>
     </div>
   );
 }
 
 export function AlsoLikedTag({ giverName }: { giverName: string }) {
-  return <span className="absolute left-2 top-2 rounded-full bg-clay-tint px-2.5 py-1 text-[12px] font-semibold text-clay">{giverName} also liked</span>;
+  return <span className="pop absolute left-2 top-2 rounded-full bg-clay-tint px-2.5 py-1 text-[12px] font-semibold text-clay">{giverName} also liked</span>;
 }
 
 export function SizePill({ label, selected, soldOut, onClick }: { label: string; selected: boolean; soldOut: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} disabled={soldOut} aria-pressed={selected}
-      className={`h-11 min-w-16 rounded-control px-3 text-[14px] font-medium ${
+      className={`press h-11 min-w-16 rounded-control px-3 text-[14px] font-medium ${
         soldOut ? "border border-dashed border-gift-input bg-soldout-bg text-soldout-text line-through"
         : selected ? "bg-ink text-white"
-        : "border border-gift-input bg-surface text-gift-text"}`}>
+        : "border border-gift-input bg-surface text-gift-text hover:border-gift-text"}`}>
       {label}
     </button>
   );
@@ -60,11 +63,11 @@ export function OptionRow({ product, current, label, onClick }: {
 }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={current}
-      className={`flex w-full items-center gap-3 rounded-card bg-surface p-2.5 text-left ${current ? "border-2 border-ink" : "border border-gift-border"}`}>
+      className={`press flex w-full items-center gap-3 rounded-card bg-surface p-2.5 text-left ${current ? "border-2 border-ink" : "border border-gift-border hover:border-gift-input"}`}>
       <span className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-control bg-skeleton">
         {product.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element -- merchant CDN
-          <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+          <img src={product.imageUrl} alt="" className="img-reveal h-full w-full object-cover" />
         )}
       </span>
       <span className="min-w-0 flex-1">
@@ -103,7 +106,7 @@ export function BottomSheet({ open, title, subtitle, onClose, children }: {
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-overlay backdrop-blur-[8px]" onClick={onClose}>
+    <div className="fade-in fixed inset-0 z-50 flex items-end justify-center bg-overlay backdrop-blur-[8px] [animation-duration:200ms]" onClick={onClose}>
       <div ref={sheetRef} role="dialog" aria-modal="true" aria-labelledby="sheet-title" onClick={(e) => e.stopPropagation()}
         className="sheet-up flex max-h-[85dvh] w-full max-w-[480px] flex-col rounded-t-sheet bg-surface px-5 pb-6 pt-2">
         <span className="mx-auto mb-3 h-[5px] w-10 rounded-full bg-gift-input" aria-hidden="true" />
@@ -117,7 +120,7 @@ export function BottomSheet({ open, title, subtitle, onClose, children }: {
             <XIcon size={14} />
           </button>
         </div>
-        <div className="mt-3 flex min-h-0 flex-col gap-2 overflow-y-auto">{children}</div>
+        <div className="mt-3 flex min-h-0 flex-col gap-2 overflow-y-auto stagger-children">{children}</div>
       </div>
     </div>
   );

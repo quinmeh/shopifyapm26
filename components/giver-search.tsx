@@ -8,7 +8,7 @@ import { fileToPhoto, PhotoInputCard, type Photo } from "./photo-input-card";
 import { LocationPicker, type ShipLocation } from "./location-picker";
 import { ProductTile, SkeletonTile } from "./product-tile";
 import {
-  AppHeader, BackButton, Card, CheckIcon, Chip, CreditFooter, Field, GiftIcon, PrimaryButton, ProgressDots, Screen,
+  AppHeader, BackButton, BowMark, Card, CheckIcon, Chip, CreditFooter, Field, PrimaryButton, ProgressDots, Screen,
   SearchIcon, SecondaryButton, Spinner, TextLinkButton, inputCls,
 } from "./ui";
 
@@ -174,19 +174,19 @@ export function GiverSearch() {
           <span className="ml-auto"><ProgressDots total={GUIDED.length} current={idx} /></span>
         </div>
 
-        <main className="flex flex-1 flex-col gap-4 px-5 pb-4">
+        <main key={step} className="stagger-children flex flex-1 flex-col gap-4 px-5 pb-4">
           {step === "photo" && (
             <>
               <Heading title="Start from something they love" body="A photo of their taste finds real gifts from independent makers. Their windowsill, their mug, their bookshelf." />
               {fileInput}
               <button type="button" onClick={() => fileRef.current?.click()}
-                className={`flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-card bg-surface text-center ${photo ? "border-2 border-ink p-0" : "border border-dashed border-giver-input p-6"}`}>
+                className={`press group flex min-h-[260px] flex-1 flex-col items-center justify-center gap-3 overflow-hidden rounded-card bg-surface text-center ${photo ? "border-2 border-ink p-0" : "border border-dashed border-giver-input p-6 hover:border-ink"}`}>
                 {photo ? (
                   // eslint-disable-next-line @next/next/no-img-element -- local data URL
-                  <img src={photo.previewUrl} alt="" className="h-full max-h-[360px] w-full object-cover" />
+                  <img key={photo.previewUrl} src={photo.previewUrl} alt="" className="img-reveal h-full max-h-[360px] w-full object-cover" />
                 ) : (
                   <>
-                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-giver-bg text-ink"><GiftIcon size={24} /></span>
+                    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-giver-bg text-ink transition-transform duration-300 ease-out group-hover:-translate-y-1 group-hover:rotate-[-6deg]"><BowMark size={26} /></span>
                     <span className="text-[15px] font-semibold">Add a photo</span>
                     <span className="text-[13px] text-giver-text2">From your camera roll or a screenshot</span>
                   </>
@@ -206,7 +206,7 @@ export function GiverSearch() {
               <div className="flex flex-wrap gap-1.5">
                 {OCCASION_IDEAS.map((o) => (
                   <button key={o} type="button" onClick={() => setOccasion(o)} aria-pressed={occasion === o}
-                    className={`h-9 rounded-full px-3 text-[13px] font-medium ${occasion === o ? "bg-ink text-white" : "border border-giver-input bg-surface text-ink"}`}>
+                    className={`press h-9 rounded-full px-3 text-[13px] font-medium ${occasion === o ? "bg-ink text-white" : "border border-giver-input bg-surface text-ink hover:border-ink"}`}>
                     {o}
                   </button>
                 ))}
@@ -223,9 +223,9 @@ export function GiverSearch() {
                   const on = budget.label === b.label;
                   return (
                     <button key={b.label} type="button" onClick={() => setBudget(b)} aria-pressed={on}
-                      className={`flex h-14 items-center justify-between rounded-card bg-surface px-4 text-left ${on ? "border-2 border-ink" : "border border-giver-border"}`}>
+                      className={`press flex h-14 items-center justify-between rounded-card bg-surface px-4 text-left ${on ? "border-2 border-ink" : "border border-giver-border hover:border-giver-input"}`}>
                       <span><span className="tabular block text-[15px] font-semibold">{b.label}</span><span className="text-[12px] text-giver-text2">{b.hint}</span></span>
-                      {on && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white"><CheckIcon size={13} /></span>}
+                      {on && <span className="pop flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white"><CheckIcon size={13} /></span>}
                     </button>
                   );
                 })}
@@ -278,11 +278,16 @@ export function GiverSearch() {
       <Screen theme="giver">
         <AppHeader right={<a href="/gifts" className="flex min-h-11 items-center text-[13px] underline">My gifts</a>} />
         <main className="flex flex-1 flex-col items-center justify-center gap-6 px-5 pb-10" aria-live="polite">
-          {photo && (
-            // eslint-disable-next-line @next/next/no-img-element -- local data URL
-            <img src={photo.previewUrl} alt="" className="h-24 w-24 rounded-card border border-giver-border object-cover" />
-          )}
-          <h1 className="text-center text-[24px] font-bold leading-[30px] tracking-[-0.4px]">{readingDone ? "Got it" : "Finding gifts"}</h1>
+          <span className="pop relative flex h-24 w-24 items-center justify-center">
+            {!readingDone && <span aria-hidden="true" className="ring absolute inset-0 rounded-card bg-giver-border" />}
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local data URL
+              <img src={photo.previewUrl} alt="" className="relative h-24 w-24 rounded-card border border-giver-border object-cover" />
+            ) : (
+              <span className="relative flex h-24 w-24 items-center justify-center rounded-card border border-giver-border bg-surface text-ink"><BowMark size={40} /></span>
+            )}
+          </span>
+          <h1 key={readingDone ? "done" : "working"} className="fade-up font-display text-center text-[28px] font-semibold leading-[34px]">{readingDone ? "Got it" : "Finding gifts"}</h1>
           <ol className="flex w-full max-w-[320px] flex-col gap-2.5">
             {rows.map((r, i) => <ReadStep key={r.key} label={r.label} done={r.done} failed={r.failed} delay={i * 180} />)}
           </ol>
@@ -302,7 +307,7 @@ export function GiverSearch() {
     <Screen theme="giver" fixed>
       <div className="flex shrink-0 items-center gap-3 px-5 pt-[18px] pb-3">
         <BackButton onClick={() => setStep("filters")} />
-        <span className="text-[15px] font-[650]">Matches</span>
+        <span className="font-display text-[19px] font-semibold">Matches</span>
         <span className="ml-auto"><Chip>Prototype</Chip></span>
       </div>
 
@@ -348,8 +353,8 @@ export function GiverSearch() {
             <div className="grid grid-cols-2 gap-2.5" aria-busy={loading} aria-live="polite">
               {loading
                 ? Array.from({ length: 4 }, (_, i) => <SkeletonTile key={i} />)
-                : products.map((p) => (
-                    <ProductTile key={p.id} product={p} selected={selected?.id === p.id}
+                : products.map((p, i) => (
+                    <ProductTile key={p.id} index={i} product={p} selected={selected?.id === p.id}
                       onSelect={() => setSelected(selected?.id === p.id ? null : p)} />
                   ))}
             </div>
@@ -378,7 +383,7 @@ export function GiverSearch() {
 function Heading({ title, body }: { title: string; body: string }) {
   return (
     <div className="pb-1">
-      <h1 className="text-[24px] font-bold leading-[30px] tracking-[-0.4px]">{title}</h1>
+      <h1 className="font-display text-[28px] font-semibold leading-[34px]">{title}</h1>
       <p className="pt-1 text-[14px] leading-5 text-giver-text2">{body}</p>
     </div>
   );
@@ -387,8 +392,8 @@ function Heading({ title, body }: { title: string; body: string }) {
 function ReadStep({ label, done, failed, delay = 0 }: { label: string; done: boolean; failed?: boolean; delay?: number }) {
   return (
     <li className="fade-up flex items-center gap-3 rounded-card border border-giver-border bg-surface px-3.5 py-3" style={{ animationDelay: `${delay}ms` }}>
-      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${done ? (failed ? "bg-giver-border text-giver-text2" : "bg-success text-white") : ""}`}>
-        {done ? (failed ? "–" : <CheckIcon size={13} />) : <Spinner label="Working" />}
+      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors duration-300 ${done ? (failed ? "bg-giver-border text-giver-text2" : "bg-success text-white") : ""}`}>
+        {done ? (failed ? "–" : <span className="pop flex"><CheckIcon size={13} /></span>) : <Spinner label="Working" />}
       </span>
       <span className="text-[14px] leading-5">{label}</span>
     </li>
@@ -401,14 +406,14 @@ function EmptyState({ photo, budget, location, occasion, view, onTryPhoto, onWid
 }) {
   const cueLabel = typeof view === "object" ? view.label : null;
   return (
-    <div className="flex flex-1 flex-col justify-center gap-4">
+    <div className="fade-in flex flex-1 flex-col justify-center gap-4">
       <div className="flex flex-wrap gap-1.5">
         <Chip>{budget.label}</Chip>
         <Chip>{location.label}</Chip>
         {cueLabel ? <Chip>{cueLabel}</Chip> : occasion && <Chip>{occasion}</Chip>}
       </div>
       <div className="flex flex-col items-center gap-2 px-4 pt-6 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface text-ink"><SearchIcon /></span>
+        <span className="pop flex h-16 w-16 items-center justify-center rounded-full bg-surface text-ink"><SearchIcon /></span>
         <h2 className="pt-1 text-[17px] font-[650] leading-[22px]">
           {cueLabel ? `Nothing for the ${cueLabel} in this budget` : view === "photo" ? "Nothing matched this photo" : "Nothing matched"}
         </h2>

@@ -1,6 +1,8 @@
-# DESIGN.md: Gift Confirm
+# DESIGN.md: Twofold
 
-> Visual reference: the "Gift Confirm — Prototype Mockups (Polaris)" canvas (9 screens).
+> **Name.** Twofold: every gift is made by two people. The giver chooses the thought; the recipient finishes the details. "Fold" is also the wrapping paper. The mark is a bow: two loops, one knot.
+
+> Visual reference: the "Gift Confirm — Prototype Mockups (Polaris)" canvas (9 screens; the product was renamed Twofold after the mockups).
 > This file is the source of truth for tokens, components, copy and states. When the canvas and this
 > file disagree, this file wins.
 
@@ -8,7 +10,7 @@
 
 1. **The giver chooses the thought; the recipient finishes the details.** Every screen should make it obvious who owns the choice.
 2. **Two moods, one system.** Giver screens are a decision tool (Polaris grey, neutral). Recipient screens are opening a present (warm paper, clay accent). Same type, spacing, components and ink buttons on both.
-3. **Clarity over effects.** Flat surfaces. No gradients, no shadows. The only blur in the app is behind the swap panel.
+3. **Clarity first, then delight.** Flat surfaces. No gradients or drop shadows on UI; the only blur is behind the swap panel. Motion is the one expressive layer: it marks gift moments (opening, confirming, sharing) and gives every control a tactile response. See §2 Motion.
 4. **Polaris-native, not Shopify-branded.** Follow Polaris patterns (ink primary buttons, green only for success). Never use the Shopify logo, Shop Pay button art, or Shop purple. Credit is plain text: "Built on Shopify Catalog + UCP".
 
 ## 2. Tokens
@@ -47,12 +49,17 @@ Rules:
 
 ### Type
 
-Font: **Inter** (Google Fonts, weights 400/500/600/700).
+Fonts: **Inter** for UI and body (weights 400/500/600/700) and **Fraunces** (variable, SOFT + opsz axes) for the voice of the gift.
+
+- `font-display` (Fraunces 600, SOFT 60): the wordmark, Display and H1 headlines, screen titles in headers.
+- `font-note` (Fraunces italic, SOFT 100): the giver's note everywhere it appears (NoteQuote 19/28, WhyCard 15/21, the note textarea 16/24), so it reads like a handwritten card.
+- Everything else stays Inter, including item titles, labels, prices and buttons.
 
 | Role | Size / line-height | Weight |
 |---|---|---|
-| Display (reveal, done) | 28–30 / 34–36, letter-spacing −0.4px | 700 |
-| H1 (giver page title) | 24 / 30, letter-spacing −0.4px | 700 |
+| Display (reveal, done) | Fraunces 34 / 40 | 600 |
+| H1 (page title) | Fraunces 28 / 34 | 600 |
+| Header screen title | Fraunces 19 | 600 |
 | Section title | 14–16 / 20 | 650 (use 600 if variable font unavailable) |
 | Item title | 15–17 / 19–22 | 650 |
 | Body | 14 / 20 | 400 |
@@ -61,6 +68,24 @@ Font: **Inter** (Google Fonts, weights 400/500/600/700).
 | Minimum anywhere | 11px, and only for non-essential captions | |
 
 Numbers in prices/totals: `font-variant-numeric: tabular-nums`.
+
+### Motion
+
+Defined in `app/globals.css`; components opt in by class. Stagger with `stagger(i)` from `components/ui.tsx` or the `stagger-children` container class.
+
+| Class | Use |
+|---|---|
+| `rise` | Default entrance: 14px up + fade, 520ms ease-out, delay from `--d`. |
+| `stagger-children` | Children rise one after another, 50ms apart (lists, form sections, sheet rows, cue chips). |
+| `pop` | Spring scale-in for check badges, selection marks, tags, success circles. |
+| `draw` / `DrawnCheck` | A check that draws its stroke in. |
+| `shimmer` | Skeleton loading band (replaces static skeleton blocks). |
+| `press` | Every button and selectable card: 0.975 scale on press, color transitions on hover. |
+| `img-reveal` | Merchant images fade in. |
+| `float`, `ring`, `lid-off`, `settle` | Reveal screen only: the closed gift floats, rings breathe out, the lid lifts on "Open your gift". |
+| `Confetti` | Paper confetti in clay, ink and warm neutrals (never green). Only on the three gift moments: opening the gift, "You're all set", and "Your gift is ready to share". |
+
+Rules: entrances ≤ 520ms, interactions ≤ 200ms, the reveal open sequence ~900ms before navigating. `prefers-reduced-motion` collapses every animation to its end state, hides confetti and rings, and the reveal navigates immediately.
 
 ### Spacing, radius, size
 
@@ -92,7 +117,7 @@ Theme switch: wrap giver routes in `data-theme="giver"` and recipient routes in 
 
 | Component | Spec |
 |---|---|
-| **AppHeader** | 28×28 ink square (radius 8) with white gift-box stroke icon + "Gift Confirm" (15/650). Right side varies: "Prototype" chip (giver), "No account needed" (recipient), "New gift" link (status). |
+| **AppHeader** | 28×28 ink square (radius 8) with the white bow mark (`BowMark`) + "Twofold" in Fraunces 19/600. Right side varies: "Prototype" chip (giver), "No account needed" (recipient), "New gift" link (status). |
 | **BackButton** | 36×36, white, 1px border, radius 8, chevron-left icon, `aria-label="Back"`. |
 | **PrimaryButton** | Full width, 48–52px, ink bg, white 15–16/600, radius 8. Disabled: `disabled-bg`, text `giver-text-2`. Rendered as `<button>` or `<a>`. |
 | **SecondaryButton** | White, 1px `giver-input-border`, ink text, 44–48px. |
@@ -101,10 +126,10 @@ Theme switch: wrap giver routes in `data-theme="giver"` and recipient routes in 
 | **Input / Select** | 40px, 1px input border, radius 8, 14px, always with a visible `<label>` (or `aria-label` where the design has none). |
 | **PhotoInputCard** | Card with 64×64 thumbnail, title (14/600) + source line (12), "Change" secondary button (36px). While searching: 2px ink border + spinner (`role="img" aria-label="Searching"`). |
 | **ProductTile** | Card: image area 104px tall (bg from product or neutral), then title (13/600), seller (12, text2), price (13/600). Selected: 2px ink border + 24px ink check badge top-right. Whole tile is a `<button>`. |
-| **SkeletonTile** | Same box as ProductTile, blocks in `skeleton` / `#F1F1F1`. No shimmer animation needed. |
+| **SkeletonTile** | Same box as ProductTile, blocks use `shimmer`. |
 | **SwapMiniCard** | 3-column grid. Image 70px, title 11/600, seller 11. 26px round ✕ button top-right (`aria-label="Remove this alternative"`). Removed state: dashed border placeholder "Removed · Undo" (button). |
 | **NoteField** | Label "What made you think of her?" (14/650), 3-row textarea, helper "She reads this first. It stays with the gift even if she swaps." |
-| **NoteQuote** (recipient) | `<figure>` card, 18×20 padding, quote 16/25, `<figcaption>` "— Quynh" in clay 13/550. |
+| **NoteQuote** (recipient) | `<figure>` letter card: 32px clay quote-mark badge overlapping the top-left edge, note in `font-note` 19/28, `<figcaption>` short clay rule + giver name in clay 13/550. |
 | **WhyCard** | Inside item card: `clay-wash` bg, radius 8, label "Why Quynh picked this" (12/650 clay), note 13/19. |
 | **AlsoLikedTag** | Top-left on item image: clay text on clay-tint, 12/600, pill radius 12. |
 | **SizePill** | 44px tall, min 64px, radius 8. Default white + gift-input border; selected ink bg white text; sold out: soldout-bg, dashed border, line-through, `disabled`. |
@@ -220,4 +245,4 @@ Other states:
 - Text contrast ≥ 4.5:1 (tokens above are chosen to pass; don't introduce lighter greys like `#8A8A8A` for text).
 - Selection never by color alone: selected tiles get border + check badge; selected pills invert.
 - Bottom sheet: `role="dialog"`, `aria-modal="true"`, focus moves into the sheet and returns to the trigger on close.
-- Respect `prefers-reduced-motion` for any transition (sheet slide ≤ 200ms).
+- Respect `prefers-reduced-motion` for any transition (sheet slide ≤ 200ms). Decorative motion (confetti, rings) is `aria-hidden` and removed under reduced motion; state changes are never conveyed by motion alone.

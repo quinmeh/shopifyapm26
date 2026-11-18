@@ -21,7 +21,7 @@ Configure these deployment secrets:
 - `APP_URL`: the canonical HTTPS site origin.
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: durable gift, session, and email-job storage.
 - `RESEND_API_KEY`: a Resend sending key.
-- `EMAIL_FROM`: a sender on your verified domain, for example `Gift Confirm <gifts@your-domain.com>`.
+- `EMAIL_FROM`: a sender on your verified domain, for example `Twofold <gifts@your-domain.com>`.
 - `CRON_SECRET`: a long random secret for the notification retry endpoint.
 
 Unset EMAIL_MODE for real delivery. The Resend API uses https://resend.com/docs/api-reference/emails/send-email and its documented Idempotency-Key header. Provider acceptance is not proof of inbox delivery; use provider delivery/bounce logs when validating a launch.

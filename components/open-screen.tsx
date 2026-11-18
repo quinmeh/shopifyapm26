@@ -120,8 +120,8 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
       <label htmlFor={`addr-${key}`} className="text-[13px] font-medium text-gift-text2">{label}</label>
       <input id={`addr-${key}`} value={address[key] ?? ""} onChange={(e) => { setAddress({ ...address, [key]: e.target.value }); setErrors((er) => ({ ...er, [key]: undefined })); }}
         aria-invalid={!!errors[key]} aria-describedby={errors[key] ? `err-${key}` : undefined}
-        className={`h-10 w-full rounded-control border bg-surface px-3 text-[14px] text-gift-text outline-none focus:border-ink ${errors[key] ? "border-clay" : "border-gift-input"}`} {...extra} />
-      {errors[key] && <p id={`err-${key}`} className="text-[13px] text-clay">{errors[key]}</p>}
+        className={`h-10 w-full rounded-control border bg-surface px-3 text-[14px] text-gift-text outline-none transition-colors focus:border-ink focus:ring-1 focus:ring-ink ${errors[key] ? "border-clay" : "border-gift-input"}`} {...extra} />
+      {errors[key] && <p id={`err-${key}`} className="fade-up text-[13px] text-clay">{errors[key]}</p>}
     </div>
   );
 
@@ -129,16 +129,16 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
     <Screen theme="gift">
       <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
         <BackButton href={onConfirmed ? `/gift/${gift.id}` : `/g/${gift.id}`} />
-        <span className="text-[15px] font-[650] text-gift-text">{onConfirmed ? "Choose an alternative" : `Your gift from ${giver}`}</span>
+        <span className="font-display text-[19px] font-semibold text-gift-text">{onConfirmed ? "Choose an alternative" : `Your gift from ${giver}`}</span>
       </div>
 
-      <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
-        {/* Item card */}
-        <GiftCard className="overflow-hidden">
-          <div className="relative h-[168px] w-full bg-skeleton">
+      <main className="stagger-children flex flex-1 flex-col gap-2.5 px-5 pb-4">
+        {/* Item card. Keyed by product so choosing another option replays the entrance. */}
+        <GiftCard key={chosen.id} className="rise overflow-hidden">
+          <div className="relative h-[200px] w-full overflow-hidden bg-skeleton">
             {chosen.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- merchant CDN
-              <img src={chosen.imageUrl} alt="" className="h-full w-full object-cover" />
+              <img src={chosen.imageUrl} alt="" className="img-reveal h-full w-full object-cover" />
             )}
             {swapped && <AlsoLikedTag giverName={giver} />}
           </div>
@@ -154,7 +154,10 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
           <GiftCard className="p-3.5 text-[13px] text-gift-text2">Couldn’t load the options. <TextLinkButton onClick={() => void load(chosen.id, selections)}>Try again</TextLinkButton></GiftCard>
         )}
         {options === null && !loadError && (
-          <GiftCard className="flex items-center gap-2 p-3.5 text-[13px] text-gift-text2"><Spinner label="Loading options" /> Checking what’s in stock…</GiftCard>
+          <GiftCard className="flex flex-col gap-2.5 p-3.5" aria-busy="true">
+            <span className="flex items-center gap-2 text-[13px] text-gift-text2"><Spinner label="Loading options" /> Checking what’s in stock…</span>
+            <span className="flex gap-2" aria-hidden="true">{[64, 72, 64].map((w, i) => <span key={i} className="shimmer h-11 rounded-control" style={{ width: w }} />)}</span>
+          </GiftCard>
         )}
         {(options ?? []).map((o) => (
           <GiftCard key={o.name} className="flex flex-col gap-2.5 p-3.5">
@@ -170,7 +173,7 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
             </div>
           </GiftCard>
         ))}
-        {errors.variant && <p className="text-[13px] text-clay">{errors.variant}</p>}
+        {errors.variant && <p role="alert" className="fade-up text-[13px] text-clay">{errors.variant}</p>}
 
         {/* Address */}
         {inPerson ? <GiftCard className="p-3.5">

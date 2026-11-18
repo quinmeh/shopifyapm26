@@ -4,6 +4,7 @@
    Usage: bg-giver-bg, text-gift-text2, border-clay, rounded-card, etc. */
 @theme {
   --font-sans: var(--font-inter), Inter, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
 
   --color-ink: #303030;
   --color-ink-hover: #1a1a1a;
@@ -47,6 +48,7 @@ body {
 }
 
 body {
+  overflow-x: clip; /* confetti and entrance offsets never cause sideways scroll */
   font-family: var(--font-sans);
   color: var(--color-ink);
   background: var(--color-giver-bg);
@@ -63,27 +65,130 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Reading-screen steps appear one after another (≤200ms, DESIGN.md §6). */
+/* ---- Display type: Fraunces for the wordmark, headlines and the giver's note ---- */
+.font-display {
+  font-family: var(--font-display);
+  font-variation-settings: "SOFT" 60, "opsz" 72;
+  letter-spacing: -0.015em;
+}
+.font-note {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-variation-settings: "SOFT" 100, "opsz" 24;
+}
+
+/* ---- Motion system ----
+   One easing family, short durations, everything opt-in by class.
+   Stagger with style={{ "--d": "120ms" }} (see stagger() in components/ui.tsx). */
+:root {
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-.fade-up {
-  animation: fade-up 180ms ease-out both;
+.fade-up { animation: fade-up 180ms ease-out both; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
 }
+.rise { animation: rise 520ms var(--ease-out) both; animation-delay: var(--d, 0ms); }
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fade-in 400ms ease-out both; animation-delay: var(--d, 0ms); }
+
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.4); }
+  60% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.pop { animation: pop 420ms var(--ease-spring) both; animation-delay: var(--d, 0ms); }
+
+/* Stroke drawing for checks. Pair with pathLength="1" on the path. */
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.draw path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 420ms var(--ease-out) forwards; animation-delay: var(--d, 0ms); }
+
+/* Skeleton shimmer: a lighter band slides across the block. */
+@keyframes shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+.shimmer {
+  background-color: var(--color-skeleton);
+  background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.7) 50%, transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Gentle hover for the closed gift on the reveal screen. */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(-1.5deg); }
+}
+.float { animation: float 3.4s ease-in-out infinite; }
+
+/* Soft rings that breathe out from the gift circle. */
+@keyframes ring {
+  0% { opacity: 0.55; transform: scale(0.85); }
+  100% { opacity: 0; transform: scale(1.45); }
+}
+.ring { animation: ring 2.6s var(--ease-out) infinite; animation-delay: var(--d, 0ms); }
+
+/* Opening the gift: lid lifts and tips away, the box settles. */
+@keyframes lid-off {
+  0% { transform: translateY(0) rotate(0deg); }
+  35% { transform: translateY(-4px) rotate(-4deg); }
+  100% { transform: translateY(-34px) rotate(-22deg); opacity: 0; }
+}
+.lid-off { animation: lid-off 620ms var(--ease-out) forwards; transform-box: fill-box; transform-origin: 20% 100%; }
+@keyframes settle {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.94, 1.04); }
+  100% { transform: scale(1); }
+}
+.settle { animation: settle 480ms var(--ease-spring); transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* Paper confetti: each piece flies to (--x, --y) and spins. */
+@keyframes burst {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(0.6); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); }
+}
+.burst { animation: burst 1100ms var(--ease-out) forwards; animation-delay: var(--d, 0ms); }
+
+/* Timeline connector grows downward. */
+@keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* Children enter one after another (lists, sheets, grids). */
+.stagger-children > * { animation: rise 460ms var(--ease-out) both; }
+.stagger-children > :nth-child(2) { animation-delay: 50ms; }
+.stagger-children > :nth-child(3) { animation-delay: 100ms; }
+.stagger-children > :nth-child(4) { animation-delay: 150ms; }
+.stagger-children > :nth-child(5) { animation-delay: 200ms; }
+.stagger-children > :nth-child(6) { animation-delay: 250ms; }
+.stagger-children > :nth-child(n + 7) { animation-delay: 300ms; }
 
 /* Bottom sheet slide (≤200ms, DESIGN.md §6). */
 @keyframes sheet-up {
   from { transform: translateY(24px); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
-.sheet-up {
-  animation: sheet-up 200ms ease-out both;
-}
+.sheet-up { animation: sheet-up 200ms var(--ease-out) both; }
+
+/* Tactile press for anything clickable. */
+.press { transition: transform 140ms var(--ease-out), background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease; }
+.press:active:not(:disabled) { transform: scale(0.975); }
+
+/* Merchant images fade in instead of popping. */
+.img-reveal { animation: fade-in 500ms ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *, *::before, *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
   }
+  .burst, .ring { display: none; }
 }

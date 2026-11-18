@@ -7,7 +7,7 @@ import type { Gift } from "@/lib/types";
 import type { CheckoutCheck } from "@/lib/checkout";
 import { toRecipientGift } from "@/lib/recipient";
 import { OpenScreen } from "./open-screen";
-import { AppHeader, Card, CheckIcon, CreditFooter, PrimaryButton, Screen, SecondaryButton, Spinner, TextLinkButton, inputCls } from "./ui";
+import { AppHeader, BowMark, Card, CreditFooter, DrawnCheck, PrimaryButton, Screen, SecondaryButton, Spinner, TextLinkButton, inputCls } from "./ui";
 
 const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n / 100);
 
@@ -126,9 +126,13 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
   const person = gift.recipientLabel.charAt(0).toUpperCase() + gift.recipientLabel.slice(1);
   return <Screen theme="giver">
     <AppHeader right={<Link href="/" className="flex min-h-11 items-center text-[13px] underline">New gift</Link>} />
-    <main className="flex flex-1 flex-col gap-2.5 px-5 pb-4">
+    <main className="stagger-children flex flex-1 flex-col gap-2.5 px-5 pb-4">
       {!c ? <Card className="flex flex-col gap-3 p-3.5">
-        <h1 className="text-[24px] font-bold leading-[30px] tracking-[-0.4px]">Waiting for {gift.recipientLabel} to choose</h1>
+        <span className="flex items-center gap-2 text-[12px] font-medium text-giver-text2">
+          <span className="relative flex h-2.5 w-2.5"><span aria-hidden="true" className="ring absolute inset-0 rounded-full bg-ink" /><span className="relative h-2.5 w-2.5 rounded-full bg-ink" /></span>
+          Link sent · checking every few seconds
+        </span>
+        <h1 className="font-display text-[28px] font-semibold leading-[34px]">Waiting for {gift.recipientLabel} to choose</h1>
         <p className="text-[14px] text-giver-text2">{inPerson ? "They’ll confirm their gift and options. You’ll ship it to yourself and give it in person." : "They’ll confirm the details and add their address."} Nothing has been charged.</p>
         <p className="text-[13px] font-medium">Delivery: {inPerson ? "Give it in person" : "Ship directly to them"}</p>
         <input readOnly aria-label="Gift link" value={url} className={inputCls} onFocus={e => e.currentTarget.select()} />
@@ -136,7 +140,7 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
         <TextLinkButton onClick={() => void refresh().catch(() => setError("Couldn’t refresh. Try again."))}>Refresh status</TextLinkButton>
       </Card> : <>
         <div className="flex gap-3 rounded-card bg-success-tint p-3.5 text-success-text">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-white"><CheckIcon /></span>
+          <span className="pop flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success text-white"><DrawnCheck delay={220} /></span>
           <div><h1 className="text-[15px] font-[650]">{gift.status === "completed" ? "Merchant checkout opened" : c.chosenProductId === gift.pick.id ? `${person} loved your pick` : `${person} chose ${chosen.shortName}`}</h1>
             <p className="pt-1 text-[13px] leading-[18px]">{gift.status === "completed" ? "Prototype completed status · payment has not been verified." : inPerson ? "They confirmed their gift and options. You’ll give it to them in person." : "They confirmed their gift and delivery details. Your note goes with it."}</p></div>
         </div>
@@ -144,7 +148,7 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
           <div className="flex gap-3">
             {chosen.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- arbitrary merchant CDN
-              <img src={chosen.imageUrl} alt="" className="h-20 w-20 rounded-control object-cover" />
+              <img src={chosen.imageUrl} alt="" className="img-reveal h-20 w-20 rounded-control object-cover" />
             )}
             <div className="min-w-0"><h2 className="text-[15px] font-semibold">{chosen.title}{c.variantTitle && c.variantTitle !== "Default" && c.variantTitle !== chosen.title ? ` · ${c.variantTitle}` : ""}</h2><p className="text-[13px] text-giver-text2">{merchant}</p>
               {chosen.rating && <p className="text-[12px]">{chosen.rating.value} ★ ({chosen.rating.count})</p>}
@@ -166,21 +170,29 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
           {address && <TextLinkButton onClick={() => void copyDelivery()}>Copy delivery details</TextLinkButton>}
         </Card>
         {gift.status !== "completed" && <>
-          {busy && <Card className="flex items-center gap-2 p-3.5 text-[13px]"><Spinner /> Re-checking price and stock…</Card>}
-          {check && !busy && <Card className={`p-3.5 text-[14px] ${check.priceChanged || check.soldOut ? "border-warning-border bg-warning-bg" : ""}`}>
+          {busy && <Card className="fade-in flex items-center gap-2 p-3.5 text-[13px]"><Spinner /> Re-checking price and stock…</Card>}
+          {check && !busy && <Card className={`fade-up p-3.5 text-[14px] ${check.priceChanged || check.soldOut ? "border-warning-border bg-warning-bg" : ""}`}>
             {check.soldOut ? "This one sold out." : check.priceChanged ? `Price changed from ${money(check.oldCents)} to ${money(check.newCents!)}.` : `Price and stock re-checked. You’ll pay on ${merchant}’s own checkout. Nothing was charged before this step.`}
             <p className="pt-1 text-[12px] text-giver-text2">Checked {new Date(check.checkedAt).toLocaleTimeString()}. We check again when you continue.</p>
           </Card>}
           {(check?.soldOut || check?.priceChanged || error) && <SecondaryButton disabled={busy} onClick={() => void reopen()}>Ask them to choose again</SecondaryButton>}
           {check?.soldOut && gift.approvedSwaps.length > 0 && <SecondaryButton disabled={busy} onClick={() => void reopen(true)}>Choose an alternative yourself</SecondaryButton>}
         </>}
-        <Card className="p-3.5"><h2 className="text-[15px] font-semibold">How it got here</h2><ol className="mt-2 space-y-2 text-[13px]">
-          {["You chose the thought", "They confirmed the details", gift.status === "completed" ? "Merchant checkout opened" : "You finish the purchase"].map((step, i) => <li key={step} className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${i < 2 ? "bg-success" : "border-2 border-ink"}`} />{step}</li>)}
-        </ol></Card>
+        <Card className="p-3.5"><h2 className="flex items-center gap-2 text-[15px] font-semibold"><BowMark size={16} /> How it got here</h2>
+          <ol className="mt-3 text-[13px]">
+            {["You chose the thought", "They confirmed the details", gift.status === "completed" ? "Merchant checkout opened" : "You finish the purchase"].map((step, i, all) => {
+              const done = i < 2 || gift.status === "completed";
+              return <li key={step} className="relative flex items-start gap-3 pb-3 last:pb-0">
+                {i < all.length - 1 && <span aria-hidden="true" className={`absolute left-[5px] top-3.5 h-[calc(100%-6px)] w-0.5 origin-top ${i < 1 || gift.status === "completed" ? "bg-success" : "bg-giver-border"} pop`} style={{ "--d": `${200 + i * 160}ms`, animationName: "grow" } as React.CSSProperties} />}
+                <span className={`pop relative mt-0.5 h-3 w-3 shrink-0 rounded-full ${done ? "bg-success" : "border-2 border-ink bg-surface"}`} style={{ "--d": `${120 + i * 160}ms` } as React.CSSProperties} />
+                <span className={done ? "" : "font-semibold"}>{step}</span>
+              </li>;
+            })}
+          </ol></Card>
       </>}
       <GiverEmail giftId={gift.id} />
       {notice && <p role="status" className="text-[13px] text-giver-text2">{notice}</p>}
-      {error && <Card className="p-3.5"><p role="alert" className="text-[13px]">{error}</p>{c && <TextLinkButton onClick={() => void recheck()}>Try the check again</TextLinkButton>}</Card>}
+      {error && <Card className="fade-up p-3.5"><p role="alert" className="text-[13px]">{error}</p>{c && <TextLinkButton onClick={() => void recheck()}>Try the check again</TextLinkButton>}</Card>}
     </main>
     <footer className="sticky bottom-0 border-t border-giver-border bg-giver-bg px-5 pb-4 pt-3">
       {c && <PrimaryButton disabled={busy || !check || check.soldOut || !!error} onClick={() => void proceed()}>{busy ? "Checking…" : check?.soldOut ? "Currently sold out" : check?.priceChanged ? `Continue at ${money(check.newCents!)}` : gift.status === "completed" ? `Open ${merchant} checkout again ↗` : `Complete purchase at ${merchant} ↗`}</PrimaryButton>}

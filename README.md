@@ -1,4 +1,6 @@
-# Gift Confirm
+# Twofold
+
+A gift made by two: you choose the thought, they finish the details. (Formerly "Gift Confirm".)
 
 Shopify APM take-home prototype. **The giver chooses the thought; the recipient finishes the details.**
 Full spec: [docs/BRIEF.md](docs/BRIEF.md).
