@@ -19,8 +19,9 @@ const BUDGETS: Budget[] = [
   { min: 6000, max: 12000, label: "$60 – $120", hint: "A proper present" },
 ];
 const WIDE: Budget = { min: 1500, max: 8000, label: "$15 – $80", hint: "Widened" };
-const DEFAULT_OCCASION = "First apartment in Seattle";
-const OCCASION_IDEAS = ["First apartment in Seattle", "A birthday", "Just because"];
+// Optional; starts empty. Each idea matches an occasion profile in lib/occasions.ts.
+const DEFAULT_OCCASION = "";
+const OCCASION_IDEAS = ["A birthday", "A new home", "A thank you", "A wedding", "A new baby", "Just because"];
 
 type Step = "photo" | "occasion" | "filters" | "reading" | "matches";
 type Status = "loading" | "ready" | "empty" | "error";
@@ -214,7 +215,7 @@ export function GiverSearch() {
               <Heading title="What’s the occasion?" body="This leads the search — the photo adds the personal touch. It also shapes the note they read first." />
               <Field label="Occasion" htmlFor="occasion">
                 <input id="occasion" className={`${inputCls} !h-12 text-[16px]`} value={occasion} autoFocus
-                  onChange={(e) => setOccasion(e.target.value)} placeholder="First apartment in Seattle" />
+                  onChange={(e) => setOccasion(e.target.value)} placeholder="A birthday, a new job, a first apartment…" />
               </Field>
               <div className="flex flex-wrap gap-1.5">
                 {OCCASION_IDEAS.map((o) => (
