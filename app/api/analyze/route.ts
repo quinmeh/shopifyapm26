@@ -8,7 +8,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const Analysis = z.object({
-  read: z.string().describe("One warm sentence about her taste, based only on what is visible. No names."),
+  read: z.string().describe("One warm sentence about their taste, based only on what is visible. No names."),
   cues: z
     .array(
       z.object({
@@ -22,10 +22,11 @@ const Analysis = z.object({
 export type Analysis = z.infer<typeof Analysis>;
 
 const SYSTEM = `You help a gift-giver who uploaded a photo of something the recipient loves.
-List 3 to 5 concrete things visible in the photo that could inspire a gift: objects, pets, hobbies, materials, or a clear aesthetic.
+List 3 to 5 concrete things visible in the photo that could inspire a gift: objects, pets, hobbies, food and drink, materials, colors, or a clear aesthetic.
+Any everyday photo works: a desk, a meal, a shelf, a screenshot, a messy room. Find the personal details in it (a favorite snack, a plant, a hobby setup, a color they keep choosing).
 Skip people and generic structure (walls, windows, floors) unless they reveal a taste, like a city view or a reading nook.
 Each cue needs a short label and a product-search query that leads to a gift for a person who loves that thing, not a replacement of the thing itself.
-Keep the taste read to one sentence, specific and warm, with no names or guesses about who she is.`;
+Keep the taste read to one sentence, specific and warm, with no names or guesses about who they are.`;
 
 type Body = { photo?: { contentType: string; data: string }; occasion?: string };
 

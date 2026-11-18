@@ -36,14 +36,30 @@ export function PhotoInputCard({
 }
 
 // Client-side resize to ≤1024px JPEG so the request body stays well under 1 MB.
+// createImageBitmap is fast but rejects some formats (e.g. HEIC on some iOS versions);
+// an <img> decode handles anything the browser can display. Orientation follows EXIF.
+async function decode(file: File): Promise<{ source: CanvasImageSource; width: number; height: number; done: () => void }> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    return { source: bitmap, width: bitmap.width, height: bitmap.height, done: () => bitmap.close() };
+  } catch {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = url;
+    try { await img.decode(); } catch (e) { URL.revokeObjectURL(url); throw e; }
+    return { source: img, width: img.naturalWidth, height: img.naturalHeight, done: () => URL.revokeObjectURL(url) };
+  }
+}
+
 export async function fileToPhoto(file: File): Promise<Photo> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+  const image = await decode(file);
+  if (!image.width || !image.height) { image.done(); throw new Error("Empty image"); }
+  const scale = Math.min(1, 1024 / Math.max(image.width, image.height));
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
+  canvas.width = Math.round(image.width * scale);
+  canvas.height = Math.round(image.height * scale);
+  canvas.getContext("2d")!.drawImage(image.source, 0, 0, canvas.width, canvas.height);
+  image.done();
   const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
   return {
     previewUrl: dataUrl,

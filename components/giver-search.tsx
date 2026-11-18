@@ -28,6 +28,19 @@ type Results = { products: ProductSnapshot[]; makers: number };
 type SearchResponse = Results & { mode: string; read?: string | null; cues?: Cue[]; occasion?: { key: string; read: string } };
 const GUIDED: Step[] = ["photo", "occasion", "filters"];
 
+// One quiet retry: the catalog's shared rate limit and mobile networks both fail transiently.
+async function post(body: object, attempt = 0): Promise<SearchResponse> {
+  try {
+    const res = await fetch("/api/search", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as SearchResponse;
+  } catch (e) {
+    if (attempt > 0) throw e;
+    await new Promise((r) => setTimeout(r, 900));
+    return post(body, attempt + 1);
+  }
+}
+
 export function GiverSearch() {
   const [step, setStep] = useState<Step>("photo");
   const [photo, setPhoto] = useState<Photo | null>(null);
@@ -58,11 +71,6 @@ export function GiverSearch() {
   const region = location.region ?? "";
   const hasOccasion = occasion.trim().length > 0;
 
-  const post = async (body: object): Promise<SearchResponse> => {
-    const res = await fetch("/api/search", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return (await res.json()) as SearchResponse;
-  };
   const common = (b: Budget, reg: string, occ: string) => ({ occasion: occ, budget: { min: b.min, max: b.max }, region: reg || undefined });
 
   // Main grid search for a view. "photo" reuses the cached visual results when present.
@@ -118,7 +126,8 @@ export function GiverSearch() {
     setAnalyzing(true);
     setClaude(null);
     try {
-      const res = await fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ photo: { contentType: p.contentType, data: p.data }, occasion: occ }) });
+      const send = () => fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ photo: { contentType: p.contentType, data: p.data }, occasion: occ }) });
+      const res = await send().catch(() => new Promise((r) => setTimeout(r, 900)).then(send));
       if (id !== analyzeReq.current) return;
       const out = res.ok ? ((await res.json()) as AnalysisResult) : { read: null, cues: [], unavailable: "error" };
       setClaude(out.cues.length ? { ...out, source: "claude" } : out);
@@ -148,9 +157,12 @@ export function GiverSearch() {
     return () => clearTimeout(t);
   }, [readingDone]);
 
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const onPhotoFile = async (file: File | undefined) => {
     if (!file) return;
-    const p = await fileToPhoto(file);
+    let p: Photo;
+    try { p = await fileToPhoto(file); setPhotoError(null); }
+    catch { setPhotoError("Couldn’t open that photo. Try a different one, or a screenshot of it."); return; }
     setPhoto(p);
     if (step === "matches") { setClearedByPhoto(true); start(p, occasion, budget, region); }
   };
@@ -193,6 +205,7 @@ export function GiverSearch() {
                 )}
               </button>
               {photo && <p className="text-center text-[13px] text-giver-text2">{photo.title} · <button type="button" className="underline underline-offset-[3px]" onClick={() => fileRef.current?.click()}>Change</button></p>}
+              {photoError && <p role="alert" className="fade-up text-center text-[13px] text-ink">{photoError}</p>}
             </>
           )}
 
@@ -316,7 +329,9 @@ export function GiverSearch() {
         <div className="flex shrink-0 flex-col gap-2.5">
           {fileInput}
           <PhotoInputCard photo={photo} searching={loading && clearedByPhoto} onChange={() => fileRef.current?.click()} />
-          {photo && <AnalysisCard analysis={analysis} loading={analysisLoading} hasOccasion={hasOccasion} view={view} onPick={onView} />}
+          {photoError && <p role="alert" className="fade-up text-[13px] text-ink">{photoError}</p>}
+          {photo && <AnalysisCard analysis={analysis} loading={analysisLoading} hasOccasion={hasOccasion} view={view} onPick={onView}
+            onRetry={() => { void analyze(photo, occasion); void readPhoto(photo, occasion, budget, region); }} />}
           <div className="grid grid-cols-2 gap-2.5">
             <Field label="Budget" htmlFor="budget">
               <select id="budget" className={inputCls} value={budget.label}

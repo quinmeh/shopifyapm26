@@ -2,7 +2,7 @@
 // "For the occasion" (default) = occasion-led search; "Looks like the photo" = pure visual;
 // a cue = that theme blended with the occasion ("seattle skyline" + "home decor").
 import type { Cue } from "@/lib/cues";
-import { CheckIcon } from "./ui";
+import { CheckIcon, TextLinkButton } from "./ui";
 
 export type { Cue };
 // source: "claude" = read the photo itself (needs ANTHROPIC_API_KEY); "catalog" = themes the visual matches share.
@@ -14,12 +14,13 @@ const UNAVAILABLE_COPY: Record<string, string> = {
   error: "Couldn’t read this photo, so the occasion leads.",
 };
 
-export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick }: {
+export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick, onRetry }: {
   analysis: AnalysisResult | null;
   loading: boolean;
   hasOccasion: boolean;
   view: View;
   onPick: (view: View) => void;
+  onRetry?: () => void;
 }) {
   const isCue = (c: Cue) => typeof view === "object" && view.label === c.label;
   return (
@@ -37,6 +38,7 @@ export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick }: {
         <>
           <p className="pt-1 text-[14px] leading-5 text-giver-text2">
             {analysis && analysis.cues.length > 0 ? analysis.read : UNAVAILABLE_COPY[analysis?.unavailable ?? "thin"] ?? UNAVAILABLE_COPY.thin}
+            {analysis?.unavailable === "error" && onRetry && <> <TextLinkButton onClick={onRetry} className="!min-h-0">Try again</TextLinkButton></>}
           </p>
           <div className="stagger-children mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Steer the matches">
             {hasOccasion && <CueChip selected={view === "occasion"} onClick={() => onPick("occasion")}>For the occasion</CueChip>}
