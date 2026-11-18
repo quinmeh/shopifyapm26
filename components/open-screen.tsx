@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { possessive } from "@/lib/recipient";
 import type { Address, OptionGroup, RecipientGift, RecipientProduct, RecipientVariant } from "@/lib/types";
 import { AlsoLikedTag, BottomSheet, GiftCard, OptionRow, SizePill, WhyCard } from "./gift-ui";
-import { BackButton, PrimaryButton, Spinner, TextLinkButton } from "./ui";
+import { BackButton, Confetti, PrimaryButton, Spinner, TextLinkButton } from "./ui";
+import { ScratchReveal } from "./scratch-reveal";
 import { Screen } from "./ui";
 import { AddressSearch } from "./address-search";
 
@@ -28,6 +29,25 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
   const [sheetOpen, setSheetOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // First look: the photo sits under a scratch-off foil (once per gift, recipient only).
+  // null = not known yet (first client render), so nothing about the gift shows early.
+  const [revealed, setRevealed] = useState<boolean | null>(onConfirmed ? true : null);
+  const [scratching, setScratching] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
+  const revealKey = `twofold:revealed:${gift.id}`;
+  useEffect(() => {
+    if (onConfirmed) return;
+    queueMicrotask(() => {
+      let seen = false;
+      try { seen = sessionStorage.getItem(revealKey) === "1"; } catch { /* storage blocked: show the scratch card */ }
+      setRevealed(seen);
+    });
+  }, [onConfirmed, revealKey]);
+  const reveal = useCallback(() => {
+    setRevealed(true);
+    setCelebrate(true);
+    try { sessionStorage.setItem(revealKey, "1"); } catch { /* replay is harmless */ }
+  }, [revealKey]);
   const req = useRef(0);
 
   // get_product (recipient view): option groups + the resolved variant for the current selections.
@@ -134,21 +154,34 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
 
       <main className="stagger-children flex flex-1 flex-col gap-2.5 px-5 pb-4">
         {/* Item card. Keyed by product so choosing another option replays the entrance. */}
+        <div className={`relative ${revealed === false && !scratching ? "jiggle" : ""}`}>
         <GiftCard key={chosen.id} className="rise overflow-hidden">
-          <div className="relative h-[200px] w-full overflow-hidden bg-skeleton">
-            {chosen.imageUrl && (
+          <div className="relative h-[220px] w-full overflow-hidden bg-skeleton">
+            {revealed !== null && chosen.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- merchant CDN
-              <img src={chosen.imageUrl} alt="" className="img-reveal h-full w-full object-cover" />
+              <img src={chosen.imageUrl} alt="" className={`h-full w-full object-cover ${revealed ? "img-reveal" : ""}`} />
             )}
-            {swapped && <AlsoLikedTag giverName={giver} />}
+            {revealed === null && <span className="shimmer absolute inset-0" aria-hidden="true" />}
+            {revealed === false && <ScratchReveal imageUrl={chosen.imageUrl} onStart={() => setScratching(true)} onReveal={reveal} />}
+            {revealed && swapped && <AlsoLikedTag giverName={giver} />}
           </div>
-          <div className="flex flex-col gap-2 p-3.5">
-            <h1 className="text-[17px] font-[650] leading-[22px] text-gift-text">{chosen.title}</h1>
-            <p className="text-[13px] text-gift-text2">From {chosen.sellerName ?? "an independent maker"}</p>
-            <WhyCard note={gift.note} giverName={giver} />
-          </div>
+          {revealed ? (
+            <div className="stagger-children flex flex-col gap-2 p-3.5">
+              <h1 className="text-[17px] font-[650] leading-[22px] text-gift-text">{chosen.title}</h1>
+              <p className="text-[13px] text-gift-text2">From {chosen.sellerName ?? "an independent maker"}</p>
+              <WhyCard note={gift.note} giverName={giver} />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1 p-3.5 text-center">
+              <h1 className="font-display text-[22px] font-semibold leading-7 text-gift-text">{giver} picked something just for you</h1>
+              <p className="text-[13px] text-gift-text2">Scratch the card to see it.</p>
+            </div>
+          )}
         </GiftCard>
+        {celebrate && <Confetti pieces={26} spread={190} delay={120} />}
+        </div>
 
+        {revealed && <>
         {/* Options */}
         {loadError && (
           <GiftCard className="p-3.5 text-[13px] text-gift-text2">Couldn’t load the options. <TextLinkButton onClick={() => void load(chosen.id, selections)}>Try again</TextLinkButton></GiftCard>
@@ -199,9 +232,10 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
             <LockIcon /> Your address is saved for this gift and shared with the giver to finish checkout.
           </p>
         </GiftCard>}
+        </>}
       </main>
 
-      <footer className="sticky bottom-0 border-t border-gift-border bg-gift-bg px-5 pb-4 pt-3">
+      {revealed && <footer className="fade-in sticky bottom-0 border-t border-gift-border bg-gift-bg px-5 pb-4 pt-3">
         <PrimaryButton onClick={() => void confirm()} disabled={submitting || resolving || loadError || options === null || (allChosen && !variantReady)}>
           {submitting ? "Saving…" : onConfirmed ? "Confirm this alternative" : inPerson ? "Confirm my gift" : "Confirm gift and delivery"}
         </PrimaryButton>
@@ -213,7 +247,7 @@ export function OpenScreen({ gift, initialProduct, initialAddress, onConfirmed }
             </TextLinkButton>
           </div>
         )}
-      </footer>
+      </footer>}
 
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} title={`${giver} also liked these`}
         subtitle="Pick whichever feels most like you. The note comes with it.">

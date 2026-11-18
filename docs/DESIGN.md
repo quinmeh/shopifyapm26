@@ -84,7 +84,8 @@ Defined in `app/globals.css`; components opt in by class. Stagger with `stagger(
 | `img-reveal` | Merchant images fade in. |
 | `float`, `ring`, `lid-off`, `settle` | Reveal screen only: the closed gift floats, rings breathe out, the lid lifts on "Open your gift". |
 | Intro splash | Before giver step 1 (`components/intro-splash.tsx`): the bow's two loops draw out from one knot, the knot pops, the tails fall and the bow gives a small tug, then "Twofold" and "A gift made by two." rise and the splash lifts away (~2.7s). Once per browser session; tap, Skip, Esc or Enter ends it; skipped entirely with reduced motion. |
-| `Confetti` | Paper confetti in clay, ink and warm neutrals (never green). Only on the three gift moments: opening the gift, "You're all set", and "Your gift is ready to share". |
+| Scratch reveal | Screen 4 first visit (`components/scratch-reveal.tsx`): the item photo sits under a clay foil (stripes, small bows, "Scratch to reveal") that jiggles like a blind box with a sweeping sheen until touched. Scratching clears it; past ~45% the foil dissolves, confetti bursts and the title, seller and "Why {Giver} picked this" rise in, followed by options, address and the confirm button. Below the photo, "{Giver} picked something just for you · Scratch the card to see it." A "Tap to reveal" button is the keyboard and no-scratch path. Once per gift per session; never on the giver's "choose an alternative yourself" screen. |
+| `Confetti` | Paper confetti in clay, ink and warm neutrals (never green). Only on gift moments: opening the gift, the scratch reveal, "You're all set", and "Your gift is ready to share". |
 
 Rules: entrances ≤ 520ms, interactions ≤ 200ms, the reveal open sequence ~900ms before navigating. `prefers-reduced-motion` collapses every animation to its end state, hides confetti and rings, and the reveal navigates immediately.
 
