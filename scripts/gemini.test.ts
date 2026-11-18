@@ -34,6 +34,15 @@ test("sends every photo with its label, in order", async () => {
   await readPhotoWithGemini({ ...input, images }, { apiKey: "k", fetchImpl });
   assert.deepEqual(parts.map((p) => p.text ?? p.inline_data?.data), ["Photo 1:", "ONE", images[1].label + ":", "TWO", "The occasion: A birthday."]);
 });
+test("includes the giver's description, and works with no photos", async () => {
+  let parts: { text?: string; inline_data?: unknown }[] = [];
+  const fetchImpl = (async (_url: string, init: RequestInit) => {
+    parts = JSON.parse(init.body as string).contents[0].parts;
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ read: "r", cues: [{ label: "matcha", query: "matcha whisk set" }] }) }] } }] }));
+  }) as unknown as typeof fetch;
+  await readPhotoWithGemini({ system: "s", images: [], occasion: "", about: "matcha, our Kyoto trip" }, { apiKey: "k", fetchImpl });
+  assert.deepEqual(parts.map((p) => p.text), ["No occasion given.", "What the giver says they love: matcha, our Kyoto trip"]);
+});
 test("keeps at most five cues", async () => {
   const cues = Array.from({ length: 7 }, (_, i) => ({ label: `c${i}`, query: `q${i}` }));
   const out = await readPhotoWithGemini(input, { apiKey: "k", fetchImpl: ok({ read: "r", cues }) });

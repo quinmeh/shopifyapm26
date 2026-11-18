@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     const phrase = typeof body.cueQuery === "string" ? body.cueQuery.replace(/\s+/g, " ").trim().slice(0, 80) : "";
     const query = phrase || `${cue} ${profile.cueSuffix}`;
     const r = await searchCatalog({ query, context: CONTEXT, filters, pagination: { limit: 8 } });
-    const products = diversify(r.products.map((p) => ({ ...toSnapshot(p), reason: `Your photo · ${cue}` })), 6);
+    const products = diversify(r.products.map((p) => ({ ...toSnapshot(p), reason: `Inspired by ${cue}` })), 6);
     const makers = new Set(products.map((p) => p.sellerName).filter(Boolean)).size;
     console.log(`[api/search] cue "${query}" ← ${products.length}`);
     return Response.json({ products, makers, mode, query });

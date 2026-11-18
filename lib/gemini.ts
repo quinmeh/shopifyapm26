@@ -17,7 +17,7 @@ export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"; // 2.5-flash is closed t
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
-    read: { type: "STRING", description: "One warm sentence about their taste, based only on what is visible. No names." },
+    read: { type: "STRING", description: "One warm sentence about their taste, based only on the photos and what the giver said. No names." },
     cues: {
       type: "ARRAY",
       minItems: 2,
@@ -25,7 +25,7 @@ const RESPONSE_SCHEMA = {
       items: {
         type: "OBJECT",
         properties: {
-          label: { type: "STRING", description: "2–3 lowercase words naming one visible thing, e.g. 'tuxedo cat'" },
+          label: { type: "STRING", description: "2–3 lowercase words naming one thing that is visible or that the giver mentioned, e.g. 'tuxedo cat'" },
           query: { type: "STRING", description: "3–6 word product search a shopper would type to find a gift for someone who loves this thing" },
         },
         required: ["label", "query"],
@@ -36,7 +36,7 @@ const RESPONSE_SCHEMA = {
 };
 
 export async function readPhotoWithGemini(
-  input: { system: string; images: { mediaType: string; data: string; label: string }[]; occasion: string },
+  input: { system: string; images: { mediaType: string; data: string; label: string }[]; occasion: string; about?: string },
   opts: { apiKey: string; model?: string; fetchImpl?: typeof fetch; timeoutMs?: number; retryDelaysMs?: number[]; budgetMs?: number },
 ): Promise<PhotoRead | PhotoReadFailure> {
   const model = opts.model || DEFAULT_GEMINI_MODEL;
@@ -57,6 +57,7 @@ export async function readPhotoWithGemini(
           parts: [
             ...input.images.flatMap((img) => [{ text: `${img.label}:` }, { inline_data: { mime_type: img.mediaType, data: img.data } }]),
             { text: input.occasion ? `The occasion: ${input.occasion}.` : "No occasion given." },
+            ...(input.about ? [{ text: `What the giver says they love: ${input.about}` }] : []),
           ],
         }],
         generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA, temperature: 0.4 },

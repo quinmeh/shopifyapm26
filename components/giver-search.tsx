@@ -42,6 +42,14 @@ async function post(body: object, attempt = 0): Promise<SearchResponse> {
   }
 }
 
+// Fallback chips from the giver's own words when no AI read is available.
+function aboutCues(text: string): AnalysisResult | null {
+  const items = text.split(/[,;\n]|\band\b/i).map((t) => t.replace(/^(loves?|likes?|our|their|that|the)\s+/i, "").trim().toLowerCase())
+    .filter((t) => t.length >= 3 && t.length <= 40);
+  const cues = [...new Set(items)].slice(0, 5).map((label) => ({ label }));
+  return cues.length ? { read: `You said they love ${cues.map((c) => c.label).join(", ")}.`, cues, source: "giver" } : null;
+}
+
 export function GiverSearch() {
   const [step, setStep] = useState<Step>("photo");
   // Up to three photos. The first one not marked "Photo of us" drives the look-alike search;
@@ -49,6 +57,8 @@ export function GiverSearch() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const photo = photos.find((p) => !p.people) ?? null;
   const [occasion, setOccasion] = useState(DEFAULT_OCCASION);
+  // What they love, in the giver's words. Private: it steers the search and never reaches the recipient.
+  const [about, setAbout] = useState("");
   const [budget, setBudget] = useState<Budget>(BUDGETS[1]);
   const [location, setLocation] = useState<ShipLocation>({ label: "Seattle, WA", region: "WA" });
 
@@ -75,6 +85,8 @@ export function GiverSearch() {
   const analyzeReq = useRef(0);
   const region = location.region ?? "";
   const hasOccasion = occasion.trim().length > 0;
+  const hasAbout = about.trim().length > 0;
+  const hasRead = photos.length > 0 || hasAbout; // anything for the AI read to work with
 
   const common = (b: Budget, reg: string, occ: string) => ({ occasion: occ, budget: { min: b.min, max: b.max }, region: reg || undefined });
 
@@ -127,16 +139,17 @@ export function GiverSearch() {
     }
   }, []);
 
-  const analyze = useCallback(async (list: Photo[], occ: string) => {
+  const analyze = useCallback(async (list: Photo[], occ: string, aboutText: string) => {
     const id = ++analyzeReq.current;
     setAnalyzing(true);
     setClaude(null);
     try {
-      const send = () => fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ photos: list.map((p) => ({ contentType: p.contentType, data: p.data, people: !!p.people })), occasion: occ }) });
+      const send = () => fetch("/api/analyze", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ photos: list.map((p) => ({ contentType: p.contentType, data: p.data, people: !!p.people })), occasion: occ, about: aboutText }) });
       const res = await send().catch(() => new Promise((r) => setTimeout(r, 900)).then(send));
       if (id !== analyzeReq.current) return;
       const out = res.ok ? ((await res.json()) as AnalysisResult) : { read: null, cues: [], unavailable: "error" };
-      setClaude(out.cues.length ? { ...out, source: "claude" } : out);
+      // No AI read available: the giver's own words still become chips ("matcha, hiking" → two cues).
+      setClaude(out.cues.length ? { ...out, source: "claude" } : aboutCues(aboutText) ?? out);
     } catch {
       if (id === analyzeReq.current) setClaude({ read: null, cues: [], unavailable: "error" });
     } finally {
@@ -150,7 +163,7 @@ export function GiverSearch() {
     const v: View = occ.trim() || !lookAlike ? "occasion" : "photo";
     setView(v);
     setOccasionRead(null);
-    if (list.length) void analyze(list, occ); else setClaude(null);
+    if (list.length || about.trim()) void analyze(list, occ, about.trim()); else setClaude(null);
     if (lookAlike) void readPhoto(lookAlike, occ, b, reg);
     else { setCatalog(null); setVisual(null); }
     void search(v, lookAlike, occ, b, reg, null);
@@ -264,6 +277,13 @@ export function GiverSearch() {
                   </button>
                 ))}
               </div>
+              <div className="flex flex-col gap-1.5 pt-2">
+                <label htmlFor="about" className="text-[13px] font-medium text-giver-text2">What do they love? · optional</label>
+                <textarea id="about" rows={2} maxLength={300} value={about} onChange={(e) => setAbout(e.target.value)}
+                  placeholder="Matcha, hiking with their dog, that trip to Kyoto…"
+                  className="w-full rounded-control border border-giver-input bg-surface px-3 py-2 text-[14px] leading-5 text-ink outline-none transition-colors focus:border-ink focus:ring-1 focus:ring-ink" />
+                <p className="text-[12px] leading-[17px] text-giver-text2">Favorites, hobbies or a memory you share. It only helps find gifts and is never shown to them.</p>
+              </div>
             </>
           )}
 
@@ -317,9 +337,9 @@ export function GiverSearch() {
     const readFailed = !!analysis && cues.length === 0;
     const rows: { key: string; label: string; done: boolean; failed?: boolean }[] = [
       ...(hasOccasion ? [{ key: "occasion", label: occasionRead ?? "Thinking about the occasion", done: !loading || !!occasionRead }] : []),
-      ...(photos.length ? [{
+      ...(hasRead ? [{
         key: "photo", done: !analysisLoading, failed: readFailed,
-        label: analysisLoading ? (photos.length > 1 ? `Looking at your ${photos.length} photos` : "Looking at the photo") : readFailed ? (photos.length > 1 ? "The photos didn’t point to a clear theme" : "The photo didn’t point to a clear theme") : analysis?.read ?? "Looked at the photos",
+        label: analysisLoading ? (!photos.length ? "Thinking about what they love" : photos.length > 1 ? `Looking at your ${photos.length} photos` : "Looking at the photo") : readFailed ? (photos.length > 1 ? "The photos didn’t point to a clear theme" : "The photo didn’t point to a clear theme") : analysis?.read ?? "Looked at the photos",
       }] : []),
       ...cues.map((c) => ({ key: `cue:${c.label}`, label: `Found: ${c.label}`, done: true })),
       {
@@ -371,9 +391,9 @@ export function GiverSearch() {
         <div className="flex shrink-0 flex-col gap-2.5">
           {fileInput}
           <PhotoInputCard photos={photos} searching={loading && clearedByPhoto} onChange={() => setStep("photo")} />
-          {photos.length > 0 && <AnalysisCard analysis={analysis} loading={analysisLoading} hasOccasion={hasOccasion} view={view} onPick={onView}
-            canLookAlike={!!photo}
-            onRetry={() => { void analyze(photos, occasion); if (photo) void readPhoto(photo, occasion, budget, region); }} />}
+          {hasRead && <AnalysisCard analysis={analysis} loading={analysisLoading} hasOccasion={hasOccasion} view={view} onPick={onView}
+            canLookAlike={!!photo} title={photos.length && hasAbout ? "From your photos and notes" : photos.length ? "From your photos" : "From what you told us"}
+            onRetry={() => { void analyze(photos, occasion, about.trim()); if (photo) void readPhoto(photo, occasion, budget, region); }} />}
           <div className="grid grid-cols-2 gap-2.5">
             <Field label="Budget" htmlFor="budget">
               <select id="budget" className={inputCls} value={budget.label}
@@ -425,7 +445,7 @@ export function GiverSearch() {
           onClick={() => {
             // Hand the pick page what it needs without a refetch (it falls back to get_product).
             if (selected) sessionStorage.setItem(`gc:pick:${selected.id}`, JSON.stringify({
-              product: selected, occasion, location,
+              product: selected, occasion, location, about: about.trim() || undefined,
               source: { view: typeof view === "object" ? `cue:${view.label}` : view, position: products.findIndex((p) => p.id === selected.id) + 1, of: products.length, refinements: refinements.current },
             }));
           }}>

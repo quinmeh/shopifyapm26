@@ -19,6 +19,7 @@ export type PickContext = {
   source?: { view: string; position: number; of: number; refinements: number };
   occasion?: string;
   location?: { label: string; region?: string };
+  about?: string; // the giver's private "what do they love" line; only offered as a note starting point
 };
 export const pickKey = (id: string) => `gc:pick:${id}`;
 // One label style for every question on this screen so the form reads as one column.
@@ -302,6 +303,12 @@ export function PickScreen({ productId }: { productId: string }) {
             className="w-full rounded-control border border-giver-input bg-surface px-3 py-2 text-[14px] leading-5 text-ink outline-none transition-colors focus:border-ink focus:ring-1 focus:ring-ink"
             placeholder="Your new place deserves a proper view, even on grey days." />
           <p className="text-[12px] text-giver-text2">They read this first. It stays with the gift even if they choose another.</p>
+          {ctx?.about && !note.trim() && !created && (
+            <button type="button" onClick={() => setNote(ctx.about!)}
+              className="fade-in self-start text-left text-[13px] text-ink underline underline-offset-[3px]">
+              Start from what you told us: “{ctx.about.length > 48 ? `${ctx.about.slice(0, 47)}…` : ctx.about}”
+            </button>
+          )}
         </div>
         <fieldset disabled={creating} className="flex flex-col gap-2">
           <legend className={`${sectionLabel} pb-1.5 pt-1`}>How would you like to give it?</legend>

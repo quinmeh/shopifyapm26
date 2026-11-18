@@ -6,7 +6,7 @@ import { CheckIcon, TextLinkButton } from "./ui";
 
 export type { Cue };
 // source: "claude" = read the photo itself (needs ANTHROPIC_API_KEY); "catalog" = themes the visual matches share.
-export type AnalysisResult = { read: string | null; cues: Cue[]; source?: "claude" | "catalog"; unavailable?: string };
+export type AnalysisResult = { read: string | null; cues: Cue[]; source?: "claude" | "catalog" | "giver"; unavailable?: string };
 export type View = "occasion" | "photo" | Cue;
 
 const UNAVAILABLE_COPY: Record<string, string> = {
@@ -14,7 +14,7 @@ const UNAVAILABLE_COPY: Record<string, string> = {
   error: "Couldn’t read this photo, so the occasion leads.",
 };
 
-export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick, onRetry, canLookAlike = true }: {
+export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick, onRetry, canLookAlike = true, title = "From your photos" }: {
   analysis: AnalysisResult | null;
   loading: boolean;
   hasOccasion: boolean;
@@ -22,11 +22,12 @@ export function AnalysisCard({ analysis, loading, hasOccasion, view, onPick, onR
   onPick: (view: View) => void;
   onRetry?: () => void;
   canLookAlike?: boolean; // false when every photo is a "Photo of us" (no look-alike search)
+  title?: string;
 }) {
   const isCue = (c: Cue) => typeof view === "object" && view.label === c.label;
   return (
     <section className="rounded-card border border-giver-border bg-surface p-3.5" aria-busy={loading}>
-      <h2 className="text-[14px] font-[650] leading-5">{loading ? "Reading your photos…" : "From your photos"}</h2>
+      <h2 className="text-[14px] font-[650] leading-5">{loading ? "Reading what you shared…" : title}</h2>
 
       {loading ? (
         <>

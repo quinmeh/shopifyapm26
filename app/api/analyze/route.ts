@@ -10,11 +10,11 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const Analysis = z.object({
-  read: z.string().describe("One warm sentence about their taste, based only on what is visible. No names."),
+  read: z.string().describe("One warm sentence about their taste, based only on the photos and what the giver said. No names."),
   cues: z
     .array(
       z.object({
-        label: z.string().describe("2–3 lowercase words naming one visible thing, e.g. 'tuxedo cat'"),
+        label: z.string().describe("2–3 lowercase words naming one thing that is visible or that the giver mentioned, e.g. 'tuxedo cat'"),
         query: z.string().describe("3–6 word product search a shopper would type to find a gift for someone who loves this thing"),
       }),
     )
@@ -23,9 +23,10 @@ const Analysis = z.object({
 });
 export type Analysis = z.infer<typeof Analysis>;
 
-const SYSTEM = `You help a gift-giver who uploaded one to three photos about the person they're buying for.
+const SYSTEM = `You help a gift-giver find themes for a gift. They may share one to three photos about the person they're buying for, a short note about what that person loves (hobbies, favorites, shared memories), or both.
+Treat the giver's note as the strongest signal. Turn memories into giftable themes (a trip to Kyoto → matcha set, Kyoto print), never a literal search for the memory.
 With several photos, look for what they have in common (a color, a hobby, a mood, a place) and favor cues that more than one photo supports.
-List 3 to 5 concrete things visible in the photo that could inspire a gift: objects, pets, hobbies, food and drink, materials, colors, or a clear aesthetic.
+List 3 to 5 concrete things, visible in the photos or named by the giver, that could inspire a gift: objects, pets, hobbies, food and drink, places, materials, colors, or a clear aesthetic.
 Any everyday photo works: a desk, a meal, a shelf, a screenshot, a messy room. Find the personal details in it (a favorite snack, a plant, a hobby setup, a color they keep choosing).
 Skip people and generic structure (walls, windows, floors) unless they reveal a taste, like a city view or a reading nook.
 Each cue needs a short label and a product-search query that leads to a gift for a person who loves that thing, not a replacement of the thing itself.
@@ -34,7 +35,8 @@ Some photos are marked as a photo of the giver and recipient together. For those
 Never describe, judge or infer anything from people's faces, bodies, clothing, age, ethnicity or other personal characteristics, in any photo.`;
 
 type InPhoto = { contentType?: string; data?: string; people?: boolean };
-type Body = { photos?: InPhoto[]; photo?: InPhoto; occasion?: string }; // `photo`: single-photo clients
+type Body = { photos?: InPhoto[]; photo?: InPhoto; occasion?: string; about?: string }; // `photo`: single-photo clients
+const MAX_ABOUT = 300;
 const MAX_PHOTOS = 3;
 const MEDIA = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
@@ -53,7 +55,9 @@ export async function POST(req: Request) {
       data: p.data,
       label: `Photo ${i + 1}${p.people ? " (the giver and recipient together: use only the setting, activity and objects)" : ""}`,
     }));
-  if (!photos.length) return Response.json({ error: "photo required" }, { status: 400 });
+  // What the giver says they love: private to the search, never shown to the recipient.
+  const about = typeof body.about === "string" ? body.about.replace(/\s+/g, " ").trim().slice(0, MAX_ABOUT) : "";
+  if (!photos.length && !about) return Response.json({ error: "photo or description required" }, { status: 400 });
 
   const reader = photoReader();
   if (reader === "off") {
@@ -66,12 +70,12 @@ export async function POST(req: Request) {
 
   if (reader === "gemini") {
     const out = await readPhotoWithGemini(
-      { system: SYSTEM, images: photos, occasion },
+      { system: SYSTEM, images: photos, occasion, about },
       // Several photos take longer to read (≈11s for three in testing); allow a little more before falling back.
       { apiKey: process.env.GEMINI_API_KEY!, model: process.env.GEMINI_MODEL, budgetMs: photos.length > 1 ? 20000 : 15000 },
     );
     if ("unavailable" in out) return Response.json({ cues: [], read: null, unavailable: out.unavailable });
-    console.log(`[api/analyze] gemini ok in ${Date.now() - started}ms (${photos.length} photo${photos.length > 1 ? "s" : ""}) → ${out.cues.map((c) => c.label).join(", ")}`);
+    console.log(`[api/analyze] gemini ok in ${Date.now() - started}ms (${photos.length} photo${photos.length === 1 ? "" : "s"}${about ? " + note" : ""}) → ${out.cues.map((c) => c.label).join(", ")}`);
     return Response.json(out);
   }
 
@@ -91,6 +95,7 @@ export async function POST(req: Request) {
               { type: "image" as const, source: { type: "base64" as const, media_type: p.mediaType, data: p.data } },
             ]),
             { type: "text", text: occasion ? `The occasion: ${occasion}.` : "No occasion given." },
+            ...(about ? [{ type: "text" as const, text: `What the giver says they love: ${about}` }] : []),
           ],
         },
       ],
