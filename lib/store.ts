@@ -32,6 +32,12 @@ export async function getGift(id: string): Promise<Gift | null> {
   return mem().get(id) ?? null;
 }
 
+export async function deleteGift(id: string): Promise<void> {
+  const redis = redisOrNull();
+  if (redis) { await redis.del(KEY(id)); return; }
+  mem().delete(id);
+}
+
 export async function saveGift(gift: Gift): Promise<void> {
   const redis = redisOrNull();
   if (redis) {

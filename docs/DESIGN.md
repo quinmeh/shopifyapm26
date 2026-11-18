@@ -140,6 +140,7 @@ Theme switch: wrap giver routes in `data-theme="giver"` and recipient routes in 
 | **SummaryRows** | Label (text2) left, value right; total row 650 with top divider; "Prototype estimate" chip on delivery date. |
 | **BottomSheet** | Overlay absolute/fixed full screen: `overlay` color + `backdrop-filter: blur(8px)`. Sheet: white, top radius 20, handle 40×5, title 18/700, subtitle 13 gift-text-2, close 36px round button. `role="dialog"`, focus trapped, Esc and backdrop tap close. |
 | **OptionRow** | In sheet: 60×60 thumb, title 14/600, seller 12; current row has 2px ink border and right label "Her pick" / "Selected" in clay. Whole row is a `<button>`. **No prices.** |
+| **GiftListItem** | My gifts row: 56px thumb, "For {recipient}", product title, status pill, and a 40px round trash button (aria-label "Delete the gift for {recipient}"). Tapping it expands an inline warning panel: "Delete this gift?" + "The link for {recipient} will stop working." when the link is still live + "It's removed from My gifts on every device, along with any photo. This can't be undone." Buttons "Keep it" / "Delete". Deleting removes the gift record, its photo and list entries; the recipient link then shows the not-found page. |
 | **MyGiftsLink** | Header pill on every giver screen: "My gifts" + count badge (ink with the number waiting on the recipient, grey with the total when none are waiting). Hidden until the giver has a gift. Links to `/gifts`. |
 | **CreditFooter** | "Built on Shopify Catalog + UCP", 11–12px text2, centered. Giver screens only. |
 
