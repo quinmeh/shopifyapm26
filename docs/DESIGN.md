@@ -140,6 +140,7 @@ Theme switch: wrap giver routes in `data-theme="giver"` and recipient routes in 
 | **SummaryRows** | Label (text2) left, value right; total row 650 with top divider; "Prototype estimate" chip on delivery date. |
 | **BottomSheet** | Overlay absolute/fixed full screen: `overlay` color + `backdrop-filter: blur(8px)`. Sheet: white, top radius 20, handle 40×5, title 18/700, subtitle 13 gift-text-2, close 36px round button. `role="dialog"`, focus trapped, Esc and backdrop tap close. |
 | **OptionRow** | In sheet: 60×60 thumb, title 14/600, seller 12; current row has 2px ink border and right label "Her pick" / "Selected" in clay. Whole row is a `<button>`. **No prices.** |
+| **MyGiftsLink** | Header pill on every giver screen: "My gifts" + count badge (ink with the number waiting on the recipient, grey with the total when none are waiting). Hidden until the giver has a gift. Links to `/gifts`. |
 | **CreditFooter** | "Built on Shopify Catalog + UCP", 11–12px text2, centered. Giver screens only. |
 
 Icons: inline stroke SVG (gift box, check, chevron, ✕, search, lock, refresh, external-arrow). No emoji, no icon fonts required.
@@ -231,6 +232,8 @@ M4 implementation notes: waiting status refreshes every 10 seconds while visible
 4. Info card (refresh icon): "Price and stock re-checked just now. You'll pay on {merchant}'s own checkout. Nothing was charged before this step."
 5. "How it got here" — 3-step mini timeline (2 green dots done, 1 ink ring next)
 6. Footer: one Primary "Complete purchase at {merchant}" + external-arrow icon; merchant checkout opens in a new tab after the price/stock re-check, keeping the gift status page open. After opening, the same button becomes "Open {merchant} checkout again" and repeats the checks. Never render a second return-to-checkout button. Caption "Merchant checkout opens in a new tab." + "Built on Shopify Catalog + UCP".
+
+Cancel: a quiet "Cancel this gift" text link at the bottom opens a warning card (scrolled into view): "The link stops working and {recipient} will see that it's no longer available." (+ merchant-order and photo notes when relevant) "This can't be undone." Buttons "Keep it" / "Cancel gift". Cancelled gifts show "Gift cancelled" with "Start a new gift"; the recipient sees "This gift is no longer available · {Giver} has withdrawn this link. Nothing was charged, and you don't need to do anything." Confirm, reopen and checkout are refused, and any stored photo is deleted. My gifts shows a grey "Cancelled" badge.
 
 Other states:
 - **Waiting** (not confirmed yet): neutral card "Waiting for your sister to open the link" + Copy link again.

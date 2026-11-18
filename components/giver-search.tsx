@@ -6,6 +6,7 @@ import type { ProductSnapshot } from "@/lib/types";
 import { AnalysisCard, type AnalysisResult, type Cue, type View } from "./analysis-card";
 import { fileToPhoto, MAX_PHOTOS, PhotoInputCard, type Photo } from "./photo-input-card";
 import { LocationPicker, type ShipLocation } from "./location-picker";
+import { MyGiftsLink } from "./my-gifts-link";
 import { ProductTile, SkeletonTile } from "./product-tile";
 import {
   AppHeader, BackButton, BowMark, Card, CheckIcon, XIcon, Chip, CreditFooter, Field, PrimaryButton, ProgressDots, Screen,
@@ -210,7 +211,7 @@ export function GiverSearch() {
       <Screen theme="giver">
         <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
           {idx > 0 ? <BackButton onClick={() => setStep(GUIDED[idx - 1])} /> : <AppHeader inline />}
-          <span className="ml-auto"><ProgressDots total={GUIDED.length} current={idx} /></span>
+          <span className="ml-auto flex items-center gap-3"><MyGiftsLink /><ProgressDots total={GUIDED.length} current={idx} /></span>
         </div>
 
         <main key={step} className="stagger-children flex flex-1 flex-col gap-4 px-5 pb-4">
@@ -349,7 +350,7 @@ export function GiverSearch() {
     ];
     return (
       <Screen theme="giver">
-        <AppHeader right={<a href="/gifts" className="flex min-h-11 items-center text-[13px] underline">My gifts</a>} />
+        <AppHeader right={<MyGiftsLink />} />
         <main className="flex flex-1 flex-col items-center justify-center gap-6 px-5 pb-10" aria-live="polite">
           <span className="pop relative flex h-24 w-24 items-center justify-center">
             {!readingDone && <span aria-hidden="true" className="ring absolute inset-0 rounded-card bg-giver-border" />}
@@ -382,7 +383,7 @@ export function GiverSearch() {
       <div className="flex shrink-0 items-center gap-3 px-5 pt-[18px] pb-3">
         <BackButton onClick={() => setStep("filters")} />
         <span className="font-display text-[19px] font-semibold">Matches</span>
-        <span className="ml-auto"><Chip>Prototype</Chip></span>
+        <span className="ml-auto flex items-center gap-2"><MyGiftsLink /><Chip>Prototype</Chip></span>
       </div>
 
       <main className="flex flex-1 flex-col px-5">

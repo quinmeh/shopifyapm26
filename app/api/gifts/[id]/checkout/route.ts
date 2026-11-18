@@ -9,6 +9,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/chec
   const gift = await getGift(id);
   if (!gift) return Response.json({ error: "Not found" }, { status: 404 });
   if (!await ownsGift(gift)) return Response.json({ error: "Giver access required" }, { status: 403 });
+  if (gift.status === "cancelled") return Response.json({ error: "This gift was cancelled." }, { status: 409 });
   if (!gift.confirmation) return Response.json({ error: "Waiting for confirmation" }, { status: 409 });
   let body;
   try { body = await req.json(); } catch { return Response.json({ error: "Invalid JSON" }, { status: 400 }); }

@@ -7,6 +7,7 @@ import type { DeliveryMethod, ProductSnapshot } from "@/lib/types";
 import { SwapMiniCard } from "./swap-mini-card";
 import { GiverEmail } from "./giver-email";
 import { Polaroid } from "./gift-ui";
+import { MyGiftsLink } from "./my-gifts-link";
 import {
   BackButton, BowMark, Card, CheckIcon, Confetti, CreditFooter, InstagramIcon, MailIcon, MessageIcon, PrimaryButton, Screen, SecondaryButton, ShareIcon, Spinner,
   TextLinkButton, inputCls, stagger,
@@ -432,6 +433,7 @@ function Header() {
     <div className="flex items-center gap-3 px-5 pt-[18px] pb-3">
       <BackButton href="/" />
       <span className="font-display text-[19px] font-semibold">Your pick</span>
+      <span className="ml-auto"><MyGiftsLink /></span>
     </div>
   );
 }

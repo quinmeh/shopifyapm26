@@ -9,7 +9,10 @@ export async function GET(req: Request, ctx: RouteContext<"/api/gifts/[id]">) {
   const { id } = await ctx.params;
   const gift = await getGift(id);
   if (!gift) return Response.json({ error: "Not found" }, { status: 404 });
-  if (new URL(req.url).searchParams.get("for") === "recipient") return Response.json(toRecipientGift(gift));
+  if (new URL(req.url).searchParams.get("for") === "recipient") {
+    if (gift.status === "cancelled") return Response.json({ error: "This gift is no longer available." }, { status: 410 });
+    return Response.json(toRecipientGift(gift));
+  }
   if (!await ownsGift(gift)) return Response.json({ error: "Sign in with the giver’s verified email." }, { status: 403 });
   return Response.json(gift);
 }

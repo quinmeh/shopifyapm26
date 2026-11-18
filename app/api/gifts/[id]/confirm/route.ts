@@ -16,6 +16,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/gifts/[id]/conf
   const { id } = await ctx.params;
   const gift = await getGift(id);
   if (!gift) return Response.json({ error: "Not found" }, { status: 404 });
+  if (gift.status === "cancelled") return Response.json({ error: "This gift is no longer available." }, { status: 410 });
   if (gift.confirmation) {
     await queueConfirmation(gift).catch(() => console.error("[notification] Could not queue; confirmation is saved."));
     return Response.json({ ok: true, alreadyConfirmed: true, confirmation: gift.confirmation });

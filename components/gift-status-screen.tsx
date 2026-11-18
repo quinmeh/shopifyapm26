@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { GiverEmail } from "./giver-email";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Gift } from "@/lib/types";
 import type { CheckoutCheck } from "@/lib/checkout";
 import { toRecipientGift } from "@/lib/recipient";
 import { OpenScreen } from "./open-screen";
+import { MyGiftsLink } from "./my-gifts-link";
 import { AppHeader, BowMark, Card, CreditFooter, DrawnCheck, PrimaryButton, Screen, SecondaryButton, Spinner, TextLinkButton, inputCls } from "./ui";
 
 const money = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n / 100);
@@ -19,6 +20,12 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
   const [notice, setNotice] = useState("");
   const [url, setUrl] = useState("");
   const [selfChoice, setSelfChoice] = useState<Gift["confirmation"]>();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const cancelCardRef = useRef<HTMLDivElement>(null);
+  // The confirm card opens at the bottom of the page; bring it above the pinned footer.
+  useEffect(() => {
+    if (confirmCancel) cancelCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [confirmCancel]);
   const c = gift.confirmation;
   const inPerson = gift.deliveryMethod === "give_in_person";
   const address = inPerson ? undefined : c?.address;
@@ -78,6 +85,16 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
     } catch (e) { setError(e instanceof Error ? e.message : "Couldn’t reopen the gift."); }
     finally { setBusy(false); }
   }
+  async function cancelGift() {
+    setBusy(true); setError("");
+    try {
+      const r = await fetch(`/api/gifts/${gift.id}/cancel`, { method: "POST" });
+      const result = await r.json();
+      if (!r.ok) throw new Error(result.error);
+      setGift(result); setCheck(null); setConfirmCancel(false); setNotice("");
+    } catch (e) { setError(e instanceof Error ? e.message : "Couldn’t cancel the gift."); }
+    finally { setBusy(false); }
+  }
   async function proceed() {
     if (!check || busy) return;
     // Reserve the tab during the click so the async stock check doesn't cause
@@ -122,10 +139,23 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
   if (selfChoice) return <OpenScreen gift={toRecipientGift(gift)} initialProduct={gift.approvedSwaps.find(p => p.id !== selfChoice.chosenProductId) ?? gift.pick}
     initialAddress={selfChoice.address} onConfirmed={() => { setSelfChoice(undefined); void refresh().catch(() => setError("Refresh this page to see your choice.")); }} />;
 
+  const header = <AppHeader right={<span className="flex items-center gap-3"><MyGiftsLink refreshKey={gift.status} /><Link href="/" className="flex min-h-11 items-center text-[13px] underline">New gift</Link></span>} />;
+  if (gift.status === "cancelled") return <Screen theme="giver">
+    {header}
+    <main className="stagger-children flex flex-1 flex-col gap-2.5 px-5 pb-6">
+      <Card className="flex flex-col gap-2 p-4">
+        <h1 className="font-display text-[28px] font-semibold leading-[34px]">Gift cancelled</h1>
+        <p className="text-[14px] leading-5 text-giver-text2">The link for {gift.recipientLabel} no longer works. They’ll see a short note that it’s no longer available.{gift.cancelledAt ? ` Cancelled ${new Date(gift.cancelledAt).toLocaleDateString()}.` : ""}</p>
+        <p className="text-[13px] text-giver-text2">{chosen.title}</p>
+      </Card>
+      <PrimaryButton href="/">Start a new gift</PrimaryButton>
+    </main>
+  </Screen>;
+
   const merchant = check?.sellerName ?? chosen.sellerName ?? "the shop";
   const person = gift.recipientLabel.charAt(0).toUpperCase() + gift.recipientLabel.slice(1);
   return <Screen theme="giver">
-    <AppHeader right={<Link href="/" className="flex min-h-11 items-center text-[13px] underline">New gift</Link>} />
+    {header}
     <main className="stagger-children flex flex-1 flex-col gap-2.5 px-5 pb-4">
       {!c ? <Card className="flex flex-col gap-3 p-3.5">
         <span className="flex items-center gap-2 text-[12px] font-medium text-giver-text2">
@@ -191,6 +221,25 @@ export function GiftStatusScreen({ initialGift }: { initialGift: Gift }) {
           </ol></Card>
       </>}
       <GiverEmail giftId={gift.id} />
+      {/* Cancel: withdraws the recipient link. Two steps so it can't happen by accident. */}
+      {!confirmCancel ? (
+        <div className="flex justify-center pt-1">
+          <TextLinkButton onClick={() => setConfirmCancel(true)} className="!text-giver-text2">Cancel this gift</TextLinkButton>
+        </div>
+      ) : (
+        <div ref={cancelCardRef}><Card className="fade-up flex flex-col gap-2.5 border-warning-border bg-warning-bg p-3.5">
+          <h2 className="text-[15px] font-semibold">Cancel this gift?</h2>
+          <p className="text-[13px] leading-[18px]">
+            The link stops working and {gift.recipientLabel} will see that it’s no longer available.
+            {gift.status === "completed" ? " Anything you bought at the merchant isn’t affected; contact the shop to change an order." : ""}
+            {gift.hasPhoto ? " Your photo will be deleted." : ""} This can’t be undone.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <SecondaryButton onClick={() => setConfirmCancel(false)} disabled={busy}>Keep it</SecondaryButton>
+            <PrimaryButton onClick={() => void cancelGift()} disabled={busy}>{busy ? "Cancelling…" : "Cancel gift"}</PrimaryButton>
+          </div>
+        </Card></div>
+      )}
       {notice && <p role="status" className="text-[13px] text-giver-text2">{notice}</p>}
       {error && <Card className="fade-up p-3.5"><p role="alert" className="text-[13px]">{error}</p>{c && <TextLinkButton onClick={() => void recheck()}>Try the check again</TextLinkButton>}</Card>}
     </main>
